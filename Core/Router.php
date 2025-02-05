@@ -1,25 +1,69 @@
 <?php
-namespace App\Core;
+namespace Core;
 
 class Router {
-    private $routes = [];
+    private array $routes = [];
+    private array $params = [];
 
-    public function add($method, $path, $handler) {
-        $this->routes[] = ['method' => $method, 'path' => $path, 'handler' => $handler];
+    public function add(string $method, string $path, string $handler): void
+    {
+        // Convertir les paramètres de route en expressions régulières
+        $pattern = preg_replace('/\{([^}]+)\}/', '(?P<\1>[^/]+)', $path);
+        $pattern = str_replace('/', '\/', $pattern);
+        $pattern = '/^' . $pattern . '$/';
+
+        $this->routes[] = [
+            'method' => $method,
+            'pattern' => $pattern,
+            'handler' => $handler,
+            'path' => $path
+        ];
     }
 
-    public function dispatch($uri) {
+    public function dispatch(string $uri): void
+    {
+        $uri = parse_url($uri, PHP_URL_PATH);
+        $uri = $uri ?: '/';
+        $method = $_SERVER['REQUEST_METHOD'];
+
         foreach ($this->routes as $route) {
-            if ($route['path'] === $uri && $_SERVER['REQUEST_METHOD'] === $route['method']) {
-                list($controller, $action) = explode('@', $route['handler']);
-                $controller = "App\\Controllers\\$controller";
+            if ($route['method'] !== $method) {
+                continue;
+            }
+
+            if (preg_match($route['pattern'], $uri, $matches)) {
+                // Extraire les paramètres de l'URL
+                $this->params = array_filter(
+                    $matches,
+                    fn($key) => !is_numeric($key),
+                    ARRAY_FILTER_USE_KEY
+                );
+
+                list($controllerName, $action) = explode('@', $route['handler']);
+                $controller = "App\\Controllers\\$controllerName";
+
+                if (!class_exists($controller)) {
+                    throw new \Exception("Controller not found: $controller");
+                }
+
                 $controllerInstance = new $controller();
-                $controllerInstance->$action();
+                if (!method_exists($controllerInstance, $action)) {
+                    throw new \Exception("Action not found: $action in $controller");
+                }
+
+                // Passer les paramètres à la méthode du contrôleur
+                call_user_func_array([$controllerInstance, $action], $this->params);
                 return;
             }
         }
+
+        // Route non trouvée
         http_response_code(404);
-        echo "Page non trouvée";
+        require_once __DIR__ . '/../app/Views/errors/404.php';
+    }
+
+    public function getParams(): array
+    {
+        return $this->params;
     }
 }
-?>
