@@ -77,7 +77,7 @@
         </div>
         <?php endif; ?>
         
-        <?= $content ?>
+        <!-- <?= $content ?> -->
     </main>
 
     <!-- Footer -->

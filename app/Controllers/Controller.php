@@ -8,13 +8,10 @@ abstract class Controller
     {
         // Extraire les données pour les rendre disponibles dans la vue
         extract($data);
-
-        // Démarrer la mise en tampon
         ob_start();
         require_once __DIR__ . "/../Views/{$view}.php";
         $content = ob_get_clean();
 
-        // Charger le layout
         require_once __DIR__ . "/../Views/layouts/{$layout}.php";
     }
 
