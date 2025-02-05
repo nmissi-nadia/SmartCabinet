@@ -2,7 +2,7 @@
 
 <div class="max-w-7xl mx-auto">
     <!-- Hero Section -->
-    <div class="flex flex-col md:flex-row items-center justify-between gap-12 mb-16">
+    <div class="flex flex-col items-center justify-between gap-12 mb-16">
         <div class="md:w-1/2">
             <h1 class="text-4xl font-bold text-gray-900 mb-4">
                 Bienvenue sur SmartCabinet
@@ -12,10 +12,10 @@
             </p>
             <?php if (!isset($_SESSION['user'])): ?>
             <div class="flex gap-4">
-                <a href="/login" class="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700">
+                <a href="/SmartCabinet/public/login" class="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700">
                     Se connecter
                 </a>
-                <a href="/register" class="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md text-blue-600 bg-white hover:bg-gray-50 border-blue-600">
+                <a href="/SmartCabinet/public/register" class="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md text-blue-600 bg-white hover:bg-gray-50 border-blue-600">
                     S'inscrire
                 </a>
             </div>
@@ -24,7 +24,7 @@
         <div class="md:w-1/2">
             <div class="bg-white rounded-lg shadow-xl p-6">
                 <h2 class="text-2xl font-semibold text-gray-900 mb-6">Nos services</h2>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="grid grid-cols-1 md:grid-cols-1 gap-6">
                     <!-- Service 1 -->
                     <div class="flex items-start space-x-4">
                         <div class="flex-shrink-0">

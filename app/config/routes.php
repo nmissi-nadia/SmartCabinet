@@ -5,8 +5,8 @@ use Core\Router;
 $router = new Router();
 
 // Routes publiques
-$router->add('GET', '/', 'HomeController@index');
-$router->add('GET', '/login', 'AuthController@login');
+$router->add('GET', '/SmartCabinet/public/', 'HomeController@index');
+$router->add('GET', '/SmartCabinet/public/login', 'AuthController@login');
 $router->add('POST', '/login', 'AuthController@authenticate');
 $router->add('GET', '/register', 'AuthController@register');
 $router->add('POST', '/register', 'AuthController@store');

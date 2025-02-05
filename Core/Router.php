@@ -24,13 +24,18 @@ class Router {
     {
         $uri = parse_url($uri, PHP_URL_PATH);
         $uri = $uri ?: '/';
+       echo $uri;
         $method = $_SERVER['REQUEST_METHOD'];
-
+    
         foreach ($this->routes as $route) {
             if ($route['method'] !== $method) {
+                
                 continue;
             }
-
+            echo "<pre>";
+            var_dump($route);
+            echo "<pre>";
+         
             if (preg_match($route['pattern'], $uri, $matches)) {
                 // Extraire les paramètres de l'URL
                 $this->params = array_filter(
@@ -38,16 +43,21 @@ class Router {
                     fn($key) => !is_numeric($key),
                     ARRAY_FILTER_USE_KEY
                 );
-
+                
+              
                 list($controllerName, $action) = explode('@', $route['handler']);
                 $controller = "App\\Controllers\\$controllerName";
-
+                var_dump($controller);
                 if (!class_exists($controller)) {
+                    
                     throw new \Exception("Controller not found: $controller");
                 }
 
                 $controllerInstance = new $controller();
                 if (!method_exists($controllerInstance, $action)) {
+                    echo "<pre>";
+                    var_dump($route);
+                    echo "<pre>";
                     throw new \Exception("Action not found: $action in $controller");
                 }
 
@@ -55,6 +65,7 @@ class Router {
                 call_user_func_array([$controllerInstance, $action], $this->params);
                 return;
             }
+            
         }
 
         // Route non trouvée
