@@ -19,52 +19,47 @@ class Router {
             'path' => $path
         ];
     }
-
     public function dispatch(string $uri): void
     {
-        $uri = parse_url($uri, PHP_URL_PATH);
-        $uri = $uri ?: '/';
+        $uri = parse_url($uri, PHP_URL_PATH) ?: '/';
         $method = $_SERVER['REQUEST_METHOD'];
     
         foreach ($this->routes as $route) {
-            if ($route['method'] !== $method) {
-                
-                continue;
-            }
-         
-            if (preg_match($route['pattern'], $uri, $matches)) {
-                // Extraire les paramètres de l'URL
-                $this->params = array_filter(
-                    $matches,
-                    fn($key) => !is_numeric($key),
-                    ARRAY_FILTER_USE_KEY
-                );
-                
-              
-                list($controllerName, $action) = explode('@', $route['handler']);
-                $controller = "App\\Controllers\\$controllerName";
-                var_dump($controller);
-                if (!class_exists($controller)) {
-                    
-                    throw new \Exception("Controller not found: $controller");
+            if ($route['method'] === $method && preg_match($route['pattern'], $uri, $matches)) {
+                $this->params = array_filter($matches, fn($key) => !is_numeric($key), ARRAY_FILTER_USE_KEY);
+    
+                [$controllerName, $action] = explode('@', $route['handler']);
+                $controllerClass = "App\\Controllers\\$controllerName";
+    
+                if (!class_exists($controllerClass)) {
+                    $this->handleError(404, "Controller not found: $controllerClass");
+                    return;
                 }
-
-                $controllerInstance = new $controller();
-                if (!method_exists($controllerInstance, $action)) {
-                    throw new \Exception("Action not found: $action in $controller");
+    
+                $controller = new $controllerClass();
+    
+                if (!method_exists($controller, $action)) {
+                    $this->handleError(404, "Action not found: $action in $controllerClass");
+                    return;
                 }
-
-                // Passer les paramètres à la méthode du contrôleur
-                call_user_func_array([$controllerInstance, $action], $this->params);
+    
+                // Appeler l'action avec les paramètres extraits
+                call_user_func_array([$controller, $action], $this->params);
                 return;
             }
-            
         }
-
+    
         // Route non trouvée
-        http_response_code(404);
-        require_once __DIR__ . '/../app/Views/errors/404.php';
+        $this->handleError(404, "Route not found: $uri");
     }
+        
+    private function handleError(int $statusCode, string $message): void
+    {
+        http_response_code($statusCode);
+        require_once __DIR__ . '/../app/Views/errors/404.php';
+        exit($message);
+    }
+    
 
     public function getParams(): array
     {

@@ -6,8 +6,8 @@ $router = new Router();
 
 // Routes publiques
 $router->add('GET', '/SmartCabinet/public/', 'HomeController@index');
-$router->add('GET', '/SmartCabinet/public/login', 'AuthController@login');
-$router->add('POST', '/login', 'AuthController@authenticate');
+$router->add('GET', 'login', 'AuthController@login');
+$router->add('POST', '/authenticate', 'AuthController@authenticate');
 $router->add('GET', '/register', 'AuthController@register');
 $router->add('POST', '/register', 'AuthController@store');
 $router->add('GET', '/logout', 'AuthController@logout');

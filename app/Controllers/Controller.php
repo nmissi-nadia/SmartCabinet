@@ -14,6 +14,7 @@ abstract class Controller
 
         require_once __DIR__ . "/../Views/layouts/{$layout}.php";
     }
+    
 
     protected function json($data): void
     {

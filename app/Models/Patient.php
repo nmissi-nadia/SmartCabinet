@@ -13,6 +13,15 @@ class Patient
     private ?string $email;
     private ?string $telephone;
 
+    public function __construct(PDO $db) {
+        $this->db = $db;
+    }
+
+    public function create($data) {
+        $stmt = $this->db->prepare("INSERT INTO patients (name, email) VALUES (:name, :email)");
+        $stmt->execute($data);
+    }
+
     public function getId(): int
     {
         return $this->id;

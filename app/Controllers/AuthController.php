@@ -2,79 +2,127 @@
 
 namespace App\Controllers;
 
-use Core\Database;
+use App\Models\User;
 
-class AuthController
+class AuthController extends Controller
 {
-    private $db;
-
-    public function __construct()
+    public function loginForm()
     {
-        $this->db = new Database();
+        $this->render('auth/login');
     }
 
     public function login()
     {
-        require_once __DIR__ . '/../Views/auth/login.php';
+        $email = $_POST['email'];
+        $password = $_POST['password'];
+
+        $user = User::findByEmail($email);
+
+        if ($user && password_verify($password, $user->password)) {
+            $_SESSION['user_id'] = $user->id;
+            $this->redirect('/');
+        } else {
+            $this->render('auth/login', ['error' => 'Email ou mot de passe incorrect']);
+        }
     }
 
-    public function authenticate()
+    public function registerForm()
     {
-        $email = $_POST['email'] ?? '';
-        $password = $_POST['password'] ?? '';
-
-        if (empty($email) || empty($password)) {
-            echo "Email ou mot de passe manquant.";
-            return;
-        }
-
-        $query = "SELECT * FROM users WHERE email = :email";
-        $user = $this->db->query($query, ['email' => $email])->fetch();
-
-        if ($user && password_verify($password, $user['password'])) {
-            session_start();
-            $_SESSION['user_id'] = $user['id'];
-            header('Location: /SmartCabinet/public/dashboard');
-            exit;
-        } else {
-            echo "Email ou mot de passe incorrect.";
-        }
+        $this->render('auth/register');
     }
 
     public function register()
     {
-        require_once __DIR__ . '/../Views/auth/register.php';
-    }
+        $user = new User();
+        $user->nom = $_POST['nom'];
+        $user->prenom = $_POST['prenom'];
+        $user->email = $_POST['email'];
+        $user->password = password_hash($_POST['password'], PASSWORD_DEFAULT);
+        $user->role = 'patient'; // Par défaut, on enregistre comme patient
 
-    public function store()
-    {
-        $name = $_POST['name'] ?? '';
-        $email = $_POST['email'] ?? '';
-        $password = $_POST['password'] ?? '';
+        if ($user->save()) {
+            // Envoyer un email de vérification
+            $token = bin2hex(random_bytes(50));
+            $user->verification_token = $token;
+            $user->save();
 
-        if (empty($name) || empty($email) || empty($password)) {
-            echo "Tous les champs sont obligatoires.";
-            return;
+            // Envoyer l'email (à implémenter)
+            // sendVerificationEmail($user->email, $token);
+
+            $this->render('auth/register_success');
+        } else {
+            $this->render('auth/register', ['error' => 'Erreur lors de l\'inscription']);
         }
-
-        $hashedPassword = password_hash($password, PASSWORD_BCRYPT);
-
-        $query = "INSERT INTO users (name, email, password) VALUES (:name, :email, :password)";
-        $this->db->query($query, [
-            'name' => $name,
-            'email' => $email,
-            'password' => $hashedPassword,
-        ]);
-
-        echo "Inscription réussie. <a href='/SmartCabinet/public/login'>Connectez-vous</a>";
     }
 
     public function logout()
     {
-        session_start();
         session_destroy();
-        header('Location: /SmartCabinet/public/login');
-        exit;
+        $this->redirect('/login');
+    }
+
+    public function verifyEmail($token)
+    {
+        $user = User::findByVerificationToken($token);
+        if ($user) {
+            $user->email_verified_at = date('Y-m-d H:i:s');
+            $user->verification_token = null;
+            $user->save();
+            $this->render('auth/email_verified');
+        } else {
+            $this->render('auth/invalid_token');
+        }
+    }
+
+    public function forgotPasswordForm()
+    {
+        $this->render('auth/forgot_password');
+    }
+
+    public function forgotPassword()
+    {
+        $email = $_POST['email'];
+        $user = User::findByEmail($email);
+
+        if ($user) {
+            $token = bin2hex(random_bytes(50));
+            $user->reset_token = $token;
+            $user->reset_token_expiry = date('Y-m-d H:i:s', strtotime('+1 hour'));
+            $user->save();
+
+            // Envoyer l'email de réinitialisation (à implémenter)
+            // sendResetPasswordEmail($user->email, $token);
+
+            $this->render('auth/reset_password_sent');
+        } else {
+            $this->render('auth/forgot_password', ['error' => 'Aucun compte trouvé avec cet email']);
+        }
+    }
+
+    public function resetPasswordForm($token)
+    {
+        $user = User::findByResetToken($token);
+        if ($user && strtotime($user->reset_token_expiry) > time()) {
+            $this->render('auth/reset_password', ['token' => $token]);
+        } else {
+            $this->render('auth/invalid_token');
+        }
+    }
+
+    public function resetPassword()
+    {
+        $token = $_POST['token'];
+        $password = $_POST['password'];
+
+        $user = User::findByResetToken($token);
+        if ($user && strtotime($user->reset_token_expiry) > time()) {
+            $user->password = password_hash($password, PASSWORD_DEFAULT);
+            $user->reset_token = null;
+            $user->reset_token_expiry = null;
+            $user->save();
+            $this->render('auth/password_reset_success');
+        } else {
+            $this->render('auth/invalid_token');
+        }
     }
 }
-?>
