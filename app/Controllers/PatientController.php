@@ -23,7 +23,7 @@ class PatientController {
             $db = Application::$app->getDatabase();
             
             // Récupérer les informations du patient
-            $stmt = $db->prepare("SELECT * FROM patients WHERE id_patient = ?");
+            $stmt = $db->prepare("SELECT * FROM utilisateurs WHERE id_utilisateur = ?");
             $stmt->execute([$_SESSION['user_id']]);
             $patient = $stmt->fetch();
 

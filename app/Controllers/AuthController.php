@@ -31,12 +31,12 @@ class AuthController {
                     $_SESSION['user_id'] = $user['id_utilisateur'];
                     $_SESSION['user_role'] = $user['role_name'];
                     $_SESSION['user_name'] = $user['prenom'] . ' ' . $user['nom'];
-
                     $baseUrl = Application::$app->getBaseUrl();
                     if ($user['role_name'] === 'Médecin') {
-                        header('Location: ' . $baseUrl . '/medecin/dashboard');
+                        // header('Location: ' . $baseUrl . '/medecin/dashboard');
                     } elseif ($user['role_name'] === 'Patient') {
                         header('Location: ' . $baseUrl . '/patient/dashboard');
+                        echo "hhhh";
                     }
                     exit;
                 }
