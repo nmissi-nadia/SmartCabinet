@@ -33,9 +33,11 @@ class Application {
         $this->router->get($this->baseUrl . '/auth/logout', [AuthController::class, 'logout']);
         
         // Routes pour les rendez-vous
-        $this->router->get($this->baseUrl . '/rendez-vous/nouveau', [RendezVousController::class, 'nouveauForm']);
-        $this->router->post($this->baseUrl . '/rendez-vous/nouveau', [RendezVousController::class, 'nouveau']);
-        $this->router->get($this->baseUrl . '/rendez-vous/mes-rendez-vous', [RendezVousController::class, 'mesRendezVous']);
+        $this->router->get($this->baseUrl . '/rendez-vous/create', [RendezVousController::class, 'showCreateForm']);
+        $this->router->post($this->baseUrl . '/rendezvous/create', [RendezVousController::class, 'create']);
+        $this->router->post($this->baseUrl . '/rendezvous/update', [RendezVousController::class, 'update']);
+        $this->router->post($this->baseUrl . '/rendezvous/cancel', [RendezVousController::class, 'cancel']);
+        $this->router->get($this->baseUrl . '/rendezvous/disponibilites', [RendezVousController::class, 'getDisponibilites']);
         
         // Routes espace patient
         $this->router->get($this->baseUrl . '/patient/dashboard', [PatientController::class, 'dashboard']);

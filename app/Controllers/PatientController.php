@@ -3,7 +3,8 @@ namespace App\Controllers;
 
 use App\Core\Database;
 use App\Models\Patient;
-use App\Models\Appointment;
+use App\Models\RendezVous;
+use App\Core\Application;
 
 class PatientController {
     private Database $db;
@@ -33,53 +34,28 @@ class PatientController {
             $stmt->execute([$id_utilisateur]);
             $patient = $stmt->fetch();
 
-            // Récupérer les prochains rendez-vous
+            // Récupérer les rendez-vous
             $stmt = $this->db->prepare("
                 SELECT rdv.*, 
-                       m.nom as medecin_nom, m.prenom as medecin_prenom,
-                       im.specialite as specialite
+                       m.nom, m.prenom,
+                       im.specialite
                 FROM rendez_vous rdv
                 JOIN infos_medecins im ON rdv.id_medecin = im.id_medecin
                 JOIN utilisateurs m ON im.id_utilisateur = m.id_utilisateur
                 WHERE rdv.id_patient = ?
-                AND rdv.date_rdv >= CURRENT_DATE
                 ORDER BY rdv.date_rdv ASC
             ");
             $stmt->execute([$id_utilisateur]);
-            $prochains_rdv = $stmt->fetchAll();
+            $rendezVous = $stmt->fetchAll();
 
-            // Récupérer l'historique des rendez-vous
-            $stmt = $this->db->prepare("
-                SELECT rdv.*, 
-                       m.nom as medecin_nom, m.prenom as medecin_prenom,
-                       im.specialite as specialite
-                FROM rendez_vous rdv
-                JOIN infos_medecins im ON rdv.id_medecin = im.id_medecin
-                JOIN utilisateurs m ON im.id_utilisateur = m.id_utilisateur
-                WHERE rdv.id_patient = ?
-                AND rdv.date_rdv < CURRENT_DATE
-                ORDER BY rdv.date_rdv DESC
-                LIMIT 5
-            ");
-            $stmt->execute([$id_utilisateur]);
-            $historique_rdv = $stmt->fetchAll();
-
-            // Récupérer la liste des médecins pour la prise de rendez-vous
-            $stmt = $this->db->prepare("
-                SELECT m.id_utilisateur, m.nom, m.prenom, im.specialite, im.adresse_cabinet
-                FROM utilisateurs m
-                JOIN infos_medecins im ON m.id_utilisateur = im.id_utilisateur
-                JOIN roles r ON m.id_role = r.id_role
-                WHERE r.role_name = 'Médecin'
-                ORDER BY m.nom, m.prenom
-            ");
-            $stmt->execute();
-            $medecins = $stmt->fetchAll();
-
+            // Charger la vue du tableau de bord
             require_once __DIR__ . '/../views/patient/dashboard.php';
-        } catch (\Exception $e) {
-            // Gérer l'erreur
-            echo "Une erreur est survenue : " . $e->getMessage();
+        } catch (\PDOException $e) {
+            // Log l'erreur
+            error_log($e->getMessage());
+            $_SESSION['error'] = "Une erreur est survenue lors du chargement du tableau de bord.";
+            header('Location: ' . Application::$app->getBaseUrl() . '/error');
+            exit;
         }
     }
 
@@ -156,7 +132,7 @@ class PatientController {
         }
         
         $userId = $_SESSION['user_id'];
-        $appointments = Appointment::findAllByPatient($userId);
+        $rendezVous = RendezVous::findAllByPatient($userId);
         
         require_once __DIR__ . '/../views/patient/appointments.php';
     }
