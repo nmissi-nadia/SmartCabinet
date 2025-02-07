@@ -34,7 +34,7 @@ Une application web moderne de gestion de cabinet médical développée en PHP n
 
 1. Cloner le repository
 ```bash
-git clone https://github.com/votre-username/cabinet-medical.git
+git clone https://github.com/nmissi-nadia/SmartCabinet.git
 cd cabinet-medical
 ```
 
@@ -96,17 +96,14 @@ git push origin feature/AmazingFeature
 ```
 5. Ouvrir une Pull Request
 
-## 📝 License
-Ce projet est sous licence MIT - voir le fichier [LICENSE.md](LICENSE.md) pour plus de détails.
-
 ## 👥 Auteurs
-- **Votre Nom** - *Développement initial* - [VotreGithub](https://github.com/votre-username)
+- **Votre Nom** - *Développement initial* - [nmissi-nadia](https://github.com/nmissi-nadia)
 
 ## 📞 Support
 Pour toute question ou suggestion, n'hésitez pas à :
 - Ouvrir une issue
-- Envoyer un email à : votre-email@example.com
+- Envoyer un email à : nmissinadia@gmail.com
 
 ## 🙏 Remerciements
 - Merci à tous les contributeurs qui participent à ce projet
-- Inspiration du design : [Tailwind UI](https://tailwindui.com/)
+
