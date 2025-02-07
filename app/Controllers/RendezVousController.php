@@ -242,11 +242,6 @@ class RendezVousController {
             exit;
         }
 
-        if (!isset($_POST['csrf_token']) || !\App\Core\CSRF::verifyToken($_POST['csrf_token'])) {
-            header('Location: ' . Application::$app->getBaseUrl() . '/medecin/dashboard');
-            exit;
-        }
-
         $id_rdv = filter_input(INPUT_POST, 'id_rdv', FILTER_VALIDATE_INT);
         if (!$id_rdv) {
             header('Location: ' . Application::$app->getBaseUrl() . '/medecin/dashboard');
@@ -265,11 +260,6 @@ class RendezVousController {
         }
 
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-            header('Location: ' . Application::$app->getBaseUrl() . '/' . strtolower($_SESSION['user_role']) . '/dashboard');
-            exit;
-        }
-
-        if (!isset($_POST['csrf_token']) || !\App\Core\CSRF::verifyToken($_POST['csrf_token'])) {
             header('Location: ' . Application::$app->getBaseUrl() . '/' . strtolower($_SESSION['user_role']) . '/dashboard');
             exit;
         }

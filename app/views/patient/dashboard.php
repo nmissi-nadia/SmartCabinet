@@ -110,7 +110,6 @@ require_once __DIR__ . '/../layouts/header.php';
                             </div>
                             <?php if ($rdv['statut'] !== 'Annulé'): ?>
                                 <form action="<?= $baseUrl ?>/rendezvous/cancel" method="POST" class="inline">
-                                    <?= \App\Core\CSRF::getTokenField() ?>
                                     <input type="hidden" name="id_rdv" value="<?= $rdv['id_rdv'] ?>">
                                     <button type="submit" class="text-red-600 hover:text-red-900 text-sm font-medium">
                                         Annuler
