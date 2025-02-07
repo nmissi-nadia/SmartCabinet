@@ -15,7 +15,7 @@ class MedecinController {
         
         // Vérifier l'authentification pour toutes les méthodes sauf login
         if (!isset($_SESSION['user_id']) || $_SESSION['user_role'] !== 'Médecin') {
-            header('Location: ' . $_SERVER['BASE_URL'] . '/auth/login');
+            header('Location: ' . Application::$app->getBaseUrl() . '/auth/login');
             exit;
         }
     }
@@ -62,10 +62,109 @@ class MedecinController {
             $stmt->execute([$id_utilisateur]);
             $prochains_rdv = $stmt->fetchAll();
 
+            // Récupérer les statistiques
+            $stats = $this->getStatistics($id_utilisateur);
+
             require_once __DIR__ . '/../views/medecin/dashboard.php';
         } catch (\Exception $e) {
             header('Location: ' . $_SERVER['BASE_URL'] . '/auth/login');
             exit;
+        }
+    }
+
+    private function getStatistics($id_utilisateur) {
+        try {
+            $stats = [];
+            
+            // 1. Nombre total de patients
+            $stmt = $this->db->prepare("
+                SELECT COUNT(DISTINCT rdv.id_patient) as total_patients
+                FROM rendez_vous rdv
+                JOIN infos_medecins im ON rdv.id_medecin = im.id_medecin
+                WHERE im.id_utilisateur = ?
+            ");
+            $stmt->execute([$id_utilisateur]);
+            $stats['total_patients'] = $stmt->fetchColumn();
+
+            // 2. Nombre de consultations ce mois
+            $stmt = $this->db->prepare("
+                SELECT COUNT(*) as consultations_mois
+                FROM rendez_vous rdv
+                JOIN infos_medecins im ON rdv.id_medecin = im.id_medecin
+                WHERE im.id_utilisateur = ?
+                AND MONTH(rdv.date_rdv) = MONTH(CURRENT_DATE)
+                AND YEAR(rdv.date_rdv) = YEAR(CURRENT_DATE)
+                AND rdv.statut = 'Terminé'
+            ");
+            $stmt->execute([$id_utilisateur]);
+            $stats['consultations_mois'] = $stmt->fetchColumn();
+
+            // 3. Nombre de nouveaux patients ce mois
+            $stmt = $this->db->prepare("
+                SELECT COUNT(DISTINCT rdv.id_patient) as nouveaux_patients
+                FROM rendez_vous rdv
+                JOIN infos_medecins im ON rdv.id_medecin = im.id_medecin
+                WHERE im.id_utilisateur = ?
+                AND MONTH(rdv.date_rdv) = MONTH(CURRENT_DATE)
+                AND YEAR(rdv.date_rdv) = YEAR(CURRENT_DATE)
+                AND rdv.id_patient NOT IN (
+                    SELECT DISTINCT r2.id_patient
+                    FROM rendez_vous r2
+                    WHERE r2.id_medecin = rdv.id_medecin
+                    AND (
+                        DATE(r2.date_rdv) < DATE_SUB(CURRENT_DATE, INTERVAL 1 MONTH)
+                    )
+                )
+            ");
+            $stmt->execute([$id_utilisateur]);
+            $stats['nouveaux_patients'] = $stmt->fetchColumn();
+
+            // 4. Taux de consultation (rendez-vous honorés / total des rendez-vous) ce mois
+            $stmt = $this->db->prepare("
+                SELECT 
+                    COUNT(CASE WHEN statut = 'Terminé' THEN 1 END) as rdv_honores,
+                    COUNT(*) as total_rdv
+                FROM rendez_vous rdv
+                JOIN infos_medecins im ON rdv.id_medecin = im.id_medecin
+                WHERE im.id_utilisateur = ?
+                AND MONTH(rdv.date_rdv) = MONTH(CURRENT_DATE)
+                AND YEAR(rdv.date_rdv) = YEAR(CURRENT_DATE)
+                AND rdv.date_rdv < CURRENT_TIMESTAMP
+            ");
+            $stmt->execute([$id_utilisateur]);
+            $result = $stmt->fetch();
+            $stats['taux_consultation'] = $result['total_rdv'] > 0 
+                ? round(($result['rdv_honores'] / $result['total_rdv']) * 100, 2)
+                : 0;
+
+            // 5. Répartition des consultations par jour de la semaine
+            $stmt = $this->db->prepare("
+                SELECT 
+                    DAYNAME(date_rdv) as jour,
+                    COUNT(*) as nombre
+                FROM rendez_vous rdv
+                JOIN infos_medecins im ON rdv.id_medecin = im.id_medecin
+                WHERE im.id_utilisateur = ?
+                AND MONTH(rdv.date_rdv) = MONTH(CURRENT_DATE)
+                AND YEAR(rdv.date_rdv) = YEAR(CURRENT_DATE)
+                AND rdv.statut = 'Terminé'
+                GROUP BY DAYNAME(date_rdv)
+                ORDER BY DAYOFWEEK(date_rdv)
+            ");
+            $stmt->execute([$id_utilisateur]);
+            $stats['repartition_jours'] = $stmt->fetchAll();
+
+            return $stats;
+
+        } catch (\Exception $e) {
+            // En cas d'erreur, retourner un tableau vide
+            return [
+                'total_patients' => 0,
+                'consultations_mois' => 0,
+                'nouveaux_patients' => 0,
+                'taux_consultation' => 0,
+                'repartition_jours' => []
+            ];
         }
     }
 
