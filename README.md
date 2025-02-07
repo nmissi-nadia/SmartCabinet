@@ -97,7 +97,7 @@ git push origin feature/AmazingFeature
 5. Ouvrir une Pull Request
 
 ## 👥 Auteurs
-- **Votre Nom** - *Développement initial* - [nmissi-nadia](https://github.com/nmissi-nadia)
+- **NMISSI Nadia** - *Développement initial* - [nmissi-nadia](https://github.com/nmissi-nadia)
 
 ## 📞 Support
 Pour toute question ou suggestion, n'hésitez pas à :
