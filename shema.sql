@@ -52,7 +52,6 @@ CREATE TABLE rendez_vous (
 -- Insertion des données initiales
 -- Ajout des rôles
 INSERT INTO roles (role_name) VALUES 
-('Admin'),
 ('Médecin'),
 ('Patient');
 

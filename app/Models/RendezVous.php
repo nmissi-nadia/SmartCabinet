@@ -110,4 +110,30 @@ class RendezVous extends Model {
         
         return $stmt->fetchAll(\PDO::FETCH_CLASS, static::class);
     }
+
+    public static function confirmerRdv(int $id_rdv): bool {
+        try {
+            $db = Application::$app->getDatabase();
+            $sql = "UPDATE rendez_vous SET statut = 'Confirmé' WHERE id_rdv = :id_rdv";
+            $stmt = $db->prepare($sql);
+            $stmt->bindValue(':id_rdv', $id_rdv, PDO::PARAM_INT);
+            return $stmt->execute();
+        } catch (PDOException $e) {
+            error_log("Erreur lors de la confirmation du rendez-vous: " . $e->getMessage());
+            return false;
+        }
+    }
+
+    public static function annulerRdv(int $id_rdv): bool {
+        try {
+            $db = Application::$app->getDatabase();
+            $sql = "UPDATE rendez_vous SET statut = 'Annulé' WHERE id_rdv = :id_rdv";
+            $stmt = $db->prepare($sql);
+            $stmt->bindValue(':id_rdv', $id_rdv, PDO::PARAM_INT);
+            return $stmt->execute();
+        } catch (PDOException $e) {
+            error_log("Erreur lors de l'annulation du rendez-vous: " . $e->getMessage());
+            return false;
+        }
+    }
 }

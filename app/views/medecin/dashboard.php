@@ -142,17 +142,5 @@
             </div>
         </main>
     </div>
-
-    <script>
-        // Fonction pour confirmer un rendez-vous
-        function confirmerRdv(idRdv) {
-            // Ajouter la logique AJAX pour confirmer le rendez-vous
-        }
-
-        // Fonction pour annuler un rendez-vous
-        function annulerRdv(idRdv) {
-            // Ajouter la logique AJAX pour annuler le rendez-vous
-        }
-    </script>
 </body>
 </html>

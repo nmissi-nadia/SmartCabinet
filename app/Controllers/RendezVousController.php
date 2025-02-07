@@ -35,7 +35,6 @@ class RendezVousController {
             // Afficher le formulaire avec la liste des médecins
             require_once __DIR__ . '/../views/patient/create_appointment.php';
         } catch (\Exception $e) {
-            $_SESSION['error'] = "Une erreur est survenue lors du chargement du formulaire.";
             header('Location: /SmartCabinet/patient/dashboard');
             exit;
         }
@@ -58,7 +57,6 @@ class RendezVousController {
         $commentaire = $_POST['commentaire'] ?? '';
 
         if (!$id_medecin || !$date_rdv) {
-            $_SESSION['error'] = "Tous les champs requis doivent être remplis.";
             header('Location: /SmartCabinet/patient/dashboard');
             exit;
         }
@@ -76,7 +74,6 @@ class RendezVousController {
             $result = $stmt->fetch();
 
             if ($result['count'] > 0) {
-                $_SESSION['error'] = "Ce créneau n'est pas disponible.";
                 header('Location: /SmartCabinet/patient/dashboard');
                 exit;
             }
@@ -88,12 +85,10 @@ class RendezVousController {
             ");
             $stmt->execute([$id_patient, $id_medecin, $date_rdv, $commentaire]);
 
-            $_SESSION['success'] = "Votre rendez-vous a été créé avec succès.";
             header('Location: /SmartCabinet/patient/dashboard');
             exit;
 
         } catch (\Exception $e) {
-            $_SESSION['error'] = "Une erreur est survenue lors de la création du rendez-vous.";
             header('Location: /SmartCabinet/patient/dashboard');
             exit;
         }
@@ -110,7 +105,6 @@ class RendezVousController {
         $commentaire = $_POST['commentaire'] ?? null;
 
         if (!$id_rdv || !$statut) {
-            $_SESSION['error'] = "Paramètres invalides.";
             header('Location: /SmartCabinet/patient/dashboard');
             exit;
         }
@@ -124,13 +118,12 @@ class RendezVousController {
             ");
             $stmt->execute([$statut, $commentaire, $id_rdv]);
 
-            $_SESSION['success'] = "Le rendez-vous a été mis à jour avec succès.";
+            header('Location: /SmartCabinet/patient/dashboard');
+            exit;
         } catch (\Exception $e) {
-            $_SESSION['error'] = "Une erreur est survenue lors de la mise à jour du rendez-vous.";
+            header('Location: /SmartCabinet/patient/dashboard');
+            exit;
         }
-
-        header('Location: /SmartCabinet/patient/dashboard');
-        exit;
     }
 
     public function cancel() {
@@ -142,7 +135,6 @@ class RendezVousController {
         $id_rdv = $_POST['id_rdv'] ?? null;
 
         if (!$id_rdv) {
-            $_SESSION['error'] = "ID de rendez-vous manquant.";
             header('Location: /SmartCabinet/patient/dashboard');
             exit;
         }
@@ -158,7 +150,6 @@ class RendezVousController {
             $rdv = $stmt->fetch();
 
             if (!$rdv || $rdv['id_patient'] != $_SESSION['user_id']) {
-                $_SESSION['error'] = "Vous n'êtes pas autorisé à annuler ce rendez-vous.";
                 header('Location: /SmartCabinet/patient/dashboard');
                 exit;
             }
@@ -170,13 +161,12 @@ class RendezVousController {
             ");
             $stmt->execute([$id_rdv]);
 
-            $_SESSION['success'] = "Le rendez-vous a été annulé avec succès.";
+            header('Location: /SmartCabinet/patient/dashboard');
+            exit;
         } catch (\Exception $e) {
-            $_SESSION['error'] = "Une erreur est survenue lors de l'annulation du rendez-vous.";
+            header('Location: /SmartCabinet/patient/dashboard');
+            exit;
         }
-
-        header('Location: /SmartCabinet/patient/dashboard');
-        exit;
     }
 
     public function getDisponibilites() {
@@ -239,5 +229,59 @@ class RendezVousController {
             echo json_encode(['error' => 'Une erreur est survenue']);
             exit;
         }
+    }
+
+    public function confirm() {
+        if (!isset($_SESSION['user_id']) || !isset($_SESSION['user_role']) || $_SESSION['user_role'] !== 'Medecin') {
+            header('Location: ' . Application::$app->getBaseUrl() . '/auth/login');
+            exit;
+        }
+
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            header('Location: ' . Application::$app->getBaseUrl() . '/medecin/dashboard');
+            exit;
+        }
+
+        if (!isset($_POST['csrf_token']) || !\App\Core\CSRF::verifyToken($_POST['csrf_token'])) {
+            header('Location: ' . Application::$app->getBaseUrl() . '/medecin/dashboard');
+            exit;
+        }
+
+        $id_rdv = filter_input(INPUT_POST, 'id_rdv', FILTER_VALIDATE_INT);
+        if (!$id_rdv) {
+            header('Location: ' . Application::$app->getBaseUrl() . '/medecin/dashboard');
+            exit;
+        }
+
+        RendezVous::confirmerRdv($id_rdv);
+        header('Location: ' . Application::$app->getBaseUrl() . '/medecin/dashboard');
+        exit;
+    }
+
+    public function cancelRdv() {
+        if (!isset($_SESSION['user_id']) || !isset($_SESSION['user_role'])) {
+            header('Location: ' . Application::$app->getBaseUrl() . '/auth/login');
+            exit;
+        }
+
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            header('Location: ' . Application::$app->getBaseUrl() . '/' . strtolower($_SESSION['user_role']) . '/dashboard');
+            exit;
+        }
+
+        if (!isset($_POST['csrf_token']) || !\App\Core\CSRF::verifyToken($_POST['csrf_token'])) {
+            header('Location: ' . Application::$app->getBaseUrl() . '/' . strtolower($_SESSION['user_role']) . '/dashboard');
+            exit;
+        }
+
+        $id_rdv = filter_input(INPUT_POST, 'id_rdv', FILTER_VALIDATE_INT);
+        if (!$id_rdv) {
+            header('Location: ' . Application::$app->getBaseUrl() . '/' . strtolower($_SESSION['user_role']) . '/dashboard');
+            exit;
+        }
+
+        RendezVous::annulerRdv($id_rdv);
+        header('Location: ' . Application::$app->getBaseUrl() . '/' . strtolower($_SESSION['user_role']) . '/dashboard');
+        exit;
     }
 }

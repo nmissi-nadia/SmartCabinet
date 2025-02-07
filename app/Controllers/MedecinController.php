@@ -11,7 +11,7 @@ class MedecinController {
         
         // Vérifier l'authentification pour toutes les méthodes sauf login
         if (!isset($_SESSION['user_id']) || $_SESSION['user_role'] !== 'Médecin') {
-            header('Location: /SmartCabinet/auth/login');
+            header('Location: ' . $_SERVER['BASE_URL'] . '/auth/login');
             exit;
         }
     }
@@ -60,7 +60,8 @@ class MedecinController {
 
             require_once __DIR__ . '/../views/medecin/dashboard.php';
         } catch (\Exception $e) {
-            echo "Une erreur est survenue : " . $e->getMessage();
+            header('Location: ' . $_SERVER['BASE_URL'] . '/auth/login');
+            exit;
         }
     }
 
@@ -175,7 +176,8 @@ class MedecinController {
 
             require_once __DIR__ . '/../views/medecin/liste_patients.php';
         } catch (\Exception $e) {
-            echo "Une erreur est survenue : " . $e->getMessage();
+            header('Location: ' . $_SERVER['BASE_URL'] . '/auth/login');
+            exit;
         }
     }
 
@@ -206,7 +208,8 @@ class MedecinController {
 
             require_once __DIR__ . '/../views/medecin/detail_patient.php';
         } catch (\Exception $e) {
-            echo "Une erreur est survenue : " . $e->getMessage();
+            header('Location: ' . $_SERVER['BASE_URL'] . '/auth/login');
+            exit;
         }
     }
 
@@ -226,7 +229,8 @@ class MedecinController {
 
             require_once __DIR__ . '/../views/medecin/profil.php';
         } catch (\Exception $e) {
-            echo "Une erreur est survenue : " . $e->getMessage();
+            header('Location: ' . $_SERVER['BASE_URL'] . '/auth/login');
+            exit;
         }
     }
 
@@ -267,13 +271,11 @@ class MedecinController {
 
                 $this->db->commit();
                 
-                $_SESSION['success'] = "Profil mis à jour avec succès";
-                header('Location: /SmartCabinet/medecin/profil');
+                header('Location: ' . $_SERVER['BASE_URL'] . '/medecin/profil');
                 exit;
             } catch (\Exception $e) {
                 $this->db->rollBack();
-                $_SESSION['error'] = "Erreur lors de la mise à jour du profil : " . $e->getMessage();
-                header('Location: /SmartCabinet/medecin/profil');
+                header('Location: ' . $_SERVER['BASE_URL'] . '/medecin/profil');
                 exit;
             }
         }
