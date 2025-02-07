@@ -14,7 +14,6 @@ class PatientController {
 
     public function dashboard() {
         // Vérifier si l'utilisateur est connecté et est un patient
-        session_start();
         if (!isset($_SESSION['user_id']) || $_SESSION['user_role'] !== 'Patient') {
             header('Location: /SmartCabinet/auth/login');
             exit;

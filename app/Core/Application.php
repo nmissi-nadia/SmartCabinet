@@ -5,6 +5,7 @@ use App\Controllers\HomeController;
 use App\Controllers\AuthController;
 use App\Controllers\PatientController;
 use App\Controllers\RendezVousController;
+use App\Controllers\MedecinController;
 
 class Application {
     public static Application $app;
@@ -41,6 +42,17 @@ class Application {
         $this->router->get($this->baseUrl . '/patient/profile', [PatientController::class, 'profile']);
         $this->router->post($this->baseUrl . '/patient/profile', [PatientController::class, 'profile']);
         $this->router->get($this->baseUrl . '/patient/appointments', [PatientController::class, 'appointments']);
+
+           // Routes espace médecin
+           $this->router->get($this->baseUrl . '/medecin/dashboard', [MedecinController::class, 'dashboard']);
+           $this->router->get($this->baseUrl . '/medecin/profile', [MedecinController::class, 'profile']);
+           $this->router->post($this->baseUrl . '/medecin/profile', [MedecinController::class, 'profile']);
+           $this->router->get($this->baseUrl . '/medecin/patients', [MedecinController::class, 'listePatients']);
+           $this->router->get($this->baseUrl . '/medecin/patient/{id}', [MedecinController::class, 'detailPatient']);
+           $this->router->get($this->baseUrl . '/medecin/appointments', [MedecinController::class, 'appointments']);
+           $this->router->post($this->baseUrl . '/medecin/appointment/confirm', [MedecinController::class, 'confirmerRendezVous']);
+           $this->router->post($this->baseUrl . '/medecin/appointment/cancel', [MedecinController::class, 'annulerRendezVous']);
+           $this->router->post($this->baseUrl . '/medecin/disponibilites', [MedecinController::class, 'updateDisponibilite']);
     }
     
     public function run() {

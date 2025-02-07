@@ -1,10 +1,21 @@
 <?php
 $baseUrl = \App\Core\Application::$app->getBaseUrl();
+$title = "Tableau de bord Patient";
+
 ?>
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><?= $title ?> - SmartCabinet</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50">
 <div class="bg-white shadow overflow-hidden sm:rounded-lg">
     <div class="px-4 py-5 sm:px-6">
         <h3 class="text-lg leading-6 font-medium text-gray-900">
-            Tableau de bord Patient
+            Tableau de bord Patient de <?= $_SESSION['user']['firstname'] ?> <?= $_SESSION['user']['lastname'] ?>
         </h3>
         <p class="mt-1 max-w-2xl text-sm text-gray-500">
             Bienvenue dans votre espace personnel
@@ -47,7 +58,7 @@ $baseUrl = \App\Core\Application::$app->getBaseUrl();
                 </dt>
                 <dd class="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
                     <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                        <a href="<?= $baseUrl ?>/appointments/new" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700">
+                        <a href="<?= $baseUrl ?>/rendez-vous/nouveau" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700">
                             Nouveau rendez-vous
                         </a>
                         <a href="<?= $baseUrl ?>/patient/profile" class="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
@@ -59,3 +70,5 @@ $baseUrl = \App\Core\Application::$app->getBaseUrl();
         </dl>
     </div>
 </div>
+</body>
+</html>
