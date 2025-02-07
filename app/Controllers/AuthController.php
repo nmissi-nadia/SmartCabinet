@@ -1,136 +1,162 @@
 <?php
 namespace App\Controllers;
 
-use App\Core\Application;
-use App\Models\User;
-use App\Models\Patient;
+use App\Core\Database;
 
 class AuthController {
+    private Database $db;
+
+    public function __construct() {
+        $this->db = new Database();
+    }
+
+    // Méthode pour la connexion
     public function login() {
+        $error = '';
+        $success = '';
+        
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $email = $_POST['email'] ?? '';
             $password = $_POST['password'] ?? '';
             
-            $user = User::findOne(['email' => $email]);
+            // Recherche de l'utilisateur avec son rôle
+            $stmt = $this->db->prepare("
+                SELECT u.*, r.role_name 
+                FROM utilisateurs u 
+                JOIN roles r ON u.id_role = r.id_role 
+                WHERE u.email = ?
+            ");
+            $stmt->execute([$email]);
+            $user = $stmt->fetch();
             
-            if ($user && password_verify($password, $user->mot_de_passe)) {
-                Application::$app->getSession()->set('user', $user->id_utilisateur);
-                Application::$app->getSession()->setFlash('success', 'Connexion réussie');
+            if ($user && password_verify($password, $user['mot_de_passe'])) {
+                // Démarrer la session si pas déjà démarrée
+                if (session_status() === PHP_SESSION_NONE) {
+                    session_start();
+                }
+                
+                $_SESSION['user_id'] = $user['id_utilisateur'];
+                $_SESSION['user_role'] = $user['role_name'];
+                $_SESSION['success'] = 'Connexion réussie';
                 
                 // Redirection selon le rôle
-                if ($user->role === 'medecin') {
-                    Application::$app->getRouter()->redirect(Application::$app->getBaseUrl() . '/medecin/dashboard');
+                if ($user['role_name'] === 'Médecin') {
+                    header('Location: /SmartCabinet/medecin/dashboard');
                 } else {
-                    Application::$app->getRouter()->redirect(Application::$app->getBaseUrl() . '/patient/dashboard');
+                    header('Location: /SmartCabinet/patient/dashboard');
                 }
+                exit;
+            } else {
+                $error = 'Email ou mot de passe incorrect';
             }
-            
-            Application::$app->getSession()->setFlash('error', 'Email ou mot de passe incorrect');
         }
         
-        return Application::$app->getRouter()->renderView('auth/login', [
-            'title' => 'Connexion'
-        ]);
+        // Afficher la vue
+        require_once __DIR__ . '/../views/auth/login.php';
     }
     
+    // Méthode pour l'inscription
     public function register() {
-        $user = new User();
-        $patient = new Patient();
+        $error = '';
+        $success = '';
         
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            $user->loadData($_POST);
-            $user->role = 'patient';
-            
-            // Hash du mot de passe
-            $user->mot_de_passe = password_hash($_POST['password'], PASSWORD_DEFAULT);
-            
-            // Validation et sauvegarde de l'utilisateur
-            if ($user->validate() && $user->save()) {
-                // Création du patient associé
-                $patient->id_utilisateur = $user->id_utilisateur;
-                $patient->numero_securite_sociale = $_POST['numero_securite_sociale'] ?? '';
-                
-                if ($patient->validate() && $patient->save()) {
-                    Application::$app->getSession()->setFlash('success', 'Inscription réussie ! Vous pouvez maintenant vous connecter.');
-                    Application::$app->getRouter()->redirect(Application::$app->getBaseUrl() . '/login');
-                    return;
-                }
-            }
-            
-            Application::$app->getSession()->setFlash('error', 'Erreur lors de l\'inscription. Veuillez vérifier vos informations.');
-        }
-        
-        return Application::$app->getRouter()->renderView('auth/register', [
-            'title' => 'Inscription',
-            'user' => $user,
-            'patient' => $patient
-        ]);
-    }
-    
-    public function logout() {
-        Application::$app->getSession()->remove('user');
-        Application::$app->getSession()->setFlash('success', 'Vous avez été déconnecté');
-        Application::$app->getRouter()->redirect(Application::$app->getBaseUrl() . '/');
-    }
-    
-    public function forgotPassword() {
-        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $nom = $_POST['nom'] ?? '';
+            $prenom = $_POST['prenom'] ?? '';
             $email = $_POST['email'] ?? '';
-            $user = User::findOne(['email' => $email]);
+            $password = $_POST['password'] ?? '';
+            $id_role = $_POST['role'] ?? ''; // 1 pour médecin, 2 pour patient
             
-            if ($user) {
-                // Génération d'un token de réinitialisation
-                $token = bin2hex(random_bytes(32));
-                $user->reset_token = $token;
-                $user->reset_token_expiry = date('Y-m-d H:i:s', strtotime('+1 hour'));
-                
-                if ($user->save()) {
-                    // TODO: Envoyer l'email avec le lien de réinitialisation
-                    Application::$app->getSession()->setFlash('success', 'Un email de réinitialisation vous a été envoyé.');
-                    Application::$app->getRouter()->redirect(Application::$app->getBaseUrl() . '/login');
-                    return;
+            // Validation simple
+            $errors = [];
+            if (empty($nom)) $errors[] = "Le nom est requis";
+            if (empty($prenom)) $errors[] = "Le prénom est requis";
+            if (empty($email)) $errors[] = "L'email est requis";
+            if (empty($password)) $errors[] = "Le mot de passe est requis";
+            if (empty($id_role)) $errors[] = "Le rôle est requis";
+            if (!filter_var($email, FILTER_VALIDATE_EMAIL)) $errors[] = "L'email n'est pas valide";
+            if (strlen($password) < 6) $errors[] = "Le mot de passe doit contenir au moins 6 caractères";
+            
+            // Si pas d'erreurs, on continue
+            if (empty($errors)) {
+                try {
+                    // Vérifier si l'email existe déjà
+                    $stmt = $this->db->prepare("SELECT COUNT(*) FROM utilisateurs WHERE email = ?");
+                    $stmt->execute([$email]);
+                    if ($stmt->fetchColumn() > 0) {
+                        $error = "Cet email est déjà utilisé";
+                    } else {
+                        // Commencer une transaction
+                        $this->db->beginTransaction();
+                        
+                        try {
+                            // Insertion de l'utilisateur
+                            $stmt = $this->db->prepare("
+                                INSERT INTO utilisateurs (nom, prenom, email, mot_de_passe, id_role) 
+                                VALUES (?, ?, ?, ?, ?)
+                            ");
+                            $hashed_password = password_hash($password, PASSWORD_DEFAULT);
+                            $stmt->execute([$nom, $prenom, $email, $hashed_password, $id_role]);
+                            
+                            $user_id = $this->db->lastInsertId();
+                            
+                            // Traitement spécifique selon le rôle
+                            if ($id_role === '2') { // Patient
+                                $numero_secu = $_POST['numero_securite_sociale'] ?? '';
+                                $stmt = $this->db->prepare("
+                                    INSERT INTO infos_patients (id_utilisateur, numero_secu) 
+                                    VALUES (?, ?)
+                                ");
+                                $stmt->execute([$user_id, $numero_secu]);
+                            } elseif ($id_role === '1') { // Médecin
+                                $specialite = $_POST['specialite'] ?? '';
+                                $numero_rpps = $_POST['numero_rpps'] ?? '';
+                                $adresse = $_POST['adresse_cabinet'] ?? '';
+                                $numero_telephone = $_POST['numero_telephone'] ?? '';
+                                
+                                $stmt = $this->db->prepare("
+                                    INSERT INTO infos_medecins (
+                                        id_utilisateur, 
+                                        specialite, 
+                                        numero_telephone,
+                                        adresse_cabinet
+                                    ) VALUES (?, ?, ?, ?)
+                                ");
+                                $stmt->execute([
+                                    $user_id, 
+                                    $specialite, 
+                                    $numero_telephone,
+                                    $adresse
+                                ]);
+                            }
+                            
+                            $this->db->commit();
+                            
+                            $success = "Inscription réussie ! Vous pouvez maintenant vous connecter.";
+                            header('Location: /SmartCabinet/auth/login');
+                            exit;
+                        } catch (\Exception $e) {
+                            $this->db->rollBack();
+                            throw $e;
+                        }
+                    }
+                } catch (\Exception $e) {
+                    $error = "Erreur lors de l'inscription : " . $e->getMessage();
                 }
+            } else {
+                $error = implode("<br>", $errors);
             }
-            
-            Application::$app->getSession()->setFlash('error', 'Aucun compte trouvé avec cet email.');
         }
         
-        return Application::$app->getRouter()->renderView('auth/forgot-password', [
-            'title' => 'Mot de passe oublié'
-        ]);
+        // Afficher la vue
+        require_once __DIR__ . '/../views/auth/register.php';
     }
     
-    public function resetPassword($token) {
-        $user = User::findOne(['reset_token' => $token]);
-        
-        if (!$user || strtotime($user->reset_token_expiry) < time()) {
-            Application::$app->getSession()->setFlash('error', 'Le lien de réinitialisation est invalide ou a expiré.');
-            Application::$app->getRouter()->redirect(Application::$app->getBaseUrl() . '/login');
-            return;
-        }
-        
-        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            $password = $_POST['password'] ?? '';
-            $passwordConfirm = $_POST['password_confirm'] ?? '';
-            
-            if ($password === $passwordConfirm) {
-                $user->mot_de_passe = password_hash($password, PASSWORD_DEFAULT);
-                $user->reset_token = null;
-                $user->reset_token_expiry = null;
-                
-                if ($user->save()) {
-                    Application::$app->getSession()->setFlash('success', 'Votre mot de passe a été réinitialisé. Vous pouvez maintenant vous connecter.');
-                    Application::$app->getRouter()->redirect(Application::$app->getBaseUrl() . '/login');
-                    return;
-                }
-            }
-            
-            Application::$app->getSession()->setFlash('error', 'Les mots de passe ne correspondent pas.');
-        }
-        
-        return Application::$app->getRouter()->renderView('auth/reset-password', [
-            'title' => 'Réinitialisation du mot de passe',
-            'token' => $token
-        ]);
+    // Méthode pour la déconnexion
+    public function logout() {
+        session_start();
+        session_destroy();
+        header('Location: /SmartCabinet/auth/login');
+        exit;
     }
 }

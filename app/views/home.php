@@ -11,7 +11,7 @@
                 Prenez rendez-vous en ligne avec nos médecins qualifiés. Un suivi médical professionnel et personnalisé.
             </p>
             <div class="mt-10">
-                <a href="/livecodingphpmvc/register" class="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md text-blue-700 bg-white hover:bg-blue-50">
+                <a href="/SmartCabinet/register" class="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md text-blue-700 bg-white hover:bg-blue-50">
                     Prendre rendez-vous
                 </a>
             </div>
@@ -86,7 +86,7 @@
                                 <?= htmlspecialchars($medecin->adresse_cabinet) ?>
                             </p>
                             <div class="mt-4">
-                                <a href="/livecodingphpmvc/rendez-vous/nouveau?medecin=<?= $medecin->id_medecin ?>" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700">
+                                <a href="/SmartCabinet/rendez-vous/nouveau?medecin=<?= $medecin->id_medecin ?>" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700">
                                     Prendre rendez-vous
                                 </a>
                             </div>
@@ -107,7 +107,7 @@
             <p class="mt-4 text-lg leading-6 text-blue-100">
                 Inscrivez-vous dès maintenant pour accéder à tous nos services.
             </p>
-            <a href="/livecodingphpmvc/register" class="mt-8 w-full inline-flex items-center justify-center px-5 py-3 border border-transparent text-base font-medium rounded-md text-blue-600 bg-white hover:bg-blue-50 sm:w-auto">
+            <a href="/SmartCabinet/register" class="mt-8 w-full inline-flex items-center justify-center px-5 py-3 border border-transparent text-base font-medium rounded-md text-blue-600 bg-white hover:bg-blue-50 sm:w-auto">
                 Créer un compte
             </a>
         </div>

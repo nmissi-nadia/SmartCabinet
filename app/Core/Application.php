@@ -12,7 +12,7 @@ class Application {
     public Router $router;
     public Session $session;
     public Database $database;
-    public string $baseUrl = '/livecodingphpmvc';
+    public string $baseUrl = '/SmartCabinet';
     
     public function __construct() {
         self::$ROOT_DIR = dirname(__DIR__);

@@ -5,30 +5,33 @@ class User extends Model {
     protected static string $table = 'utilisateurs';
     
     public function validate(): bool {
-        $this->errors = [];
-        
-        if (empty($this->attributes['email'])) {
-            $this->errors['email'] = "L'email est requis";
-        } elseif (!filter_var($this->attributes['email'], FILTER_VALIDATE_EMAIL)) {
-            $this->errors['email'] = "L'email n'est pas valide";
+        // Validation des champs requis
+        $this->validateRequired('email', 'Email');
+        $this->validateRequired('mot_de_passe', 'Mot de passe');
+        $this->validateRequired('nom', 'Nom');
+        $this->validateRequired('prenom', 'Prénom');
+        $this->validateRequired('role', 'Rôle');
+
+        // Validation du format email
+        $this->validateEmail('email');
+
+        // Validation de la longueur du mot de passe
+        $this->validateMinLength('mot_de_passe', 6, 'Mot de passe');
+        $this->validateMaxLength('mot_de_passe', 100, 'Mot de passe');
+
+        // Validation des longueurs pour nom et prénom
+        $this->validateMaxLength('nom', 50, 'Nom');
+        $this->validateMaxLength('prenom', 50, 'Prénom');
+
+        // Vérification que l'email est unique
+        $this->validateUnique('email');
+
+        // Validation du rôle
+        $value = $this->attributes['role'] ?? '';
+        if (!in_array($value, ['patient', 'medecin'])) {
+            $this->addError('role', 'Le rôle doit être soit patient soit médecin');
         }
-        
-        if (empty($this->attributes['mot_de_passe'])) {
-            $this->errors['mot_de_passe'] = "Le mot de passe est requis";
-        }
-        
-        if (empty($this->attributes['nom'])) {
-            $this->errors['nom'] = "Le nom est requis";
-        }
-        
-        if (empty($this->attributes['prenom'])) {
-            $this->errors['prenom'] = "Le prénom est requis";
-        }
-        
-        if (empty($this->attributes['id_role'])) {
-            $this->errors['id_role'] = "Le rôle est requis";
-        }
-        
+
         return empty($this->errors);
     }
     
@@ -45,14 +48,14 @@ class User extends Model {
     }
     
     public function getMedecin(): ?Medecin {
-        if ($this->id_role !== 2) { // 2 = Médecin
+        if ($this->id_role !== 1) { // 2 = Médecin
             return null;
         }
         return Medecin::findOne(['id_utilisateur' => $this->id_utilisateur]);
     }
     
     public function getRendezVous(): array {
-        if ($this->id_role === 3) { // 3 = Patient
+        if ($this->id_role === 2) { // 3 = Patient
             return RendezVous::findAll(['id_patient' => $this->id_utilisateur]);
         }
         return [];

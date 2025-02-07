@@ -23,11 +23,87 @@ abstract class Model {
     public function getErrors() {
         return $this->errors;
     }
-    
-    public function validate(): bool {
+
+    public function loadData(array $data): void {
+        foreach ($data as $key => $value) {
+            $this->attributes[$key] = $value;
+        }
+    }
+
+    protected function addError(string $attribute, string $message): void {
+        $this->errors[$attribute] = $message;
+    }
+
+    protected function validateRequired(string $attribute, string $label = null): bool {
+        $value = $this->attributes[$attribute] ?? '';
+        if (empty($value)) {
+            $fieldName = $label ?? ucfirst(str_replace('_', ' ', $attribute));
+            $this->addError($attribute, "$fieldName est requis");
+            return false;
+        }
+        return true;
+    }
+
+    protected function validateEmail(string $attribute): bool {
+        $value = $this->attributes[$attribute] ?? '';
+        if (!empty($value) && !filter_var($value, FILTER_VALIDATE_EMAIL)) {
+            $this->addError($attribute, "L'adresse email n'est pas valide");
+            return false;
+        }
+        return true;
+    }
+
+    protected function validateMinLength(string $attribute, int $minLength, string $label = null): bool {
+        $value = $this->attributes[$attribute] ?? '';
+        if (strlen($value) < $minLength) {
+            $fieldName = $label ?? ucfirst(str_replace('_', ' ', $attribute));
+            $this->addError($attribute, "$fieldName doit contenir au moins $minLength caractères");
+            return false;
+        }
+        return true;
+    }
+
+    protected function validateMaxLength(string $attribute, int $maxLength, string $label = null): bool {
+        $value = $this->attributes[$attribute] ?? '';
+        if (strlen($value) > $maxLength) {
+            $fieldName = $label ?? ucfirst(str_replace('_', ' ', $attribute));
+            $this->addError($attribute, "$fieldName ne doit pas dépasser $maxLength caractères");
+            return false;
+        }
+        return true;
+    }
+
+    protected function validateUnique(string $attribute, array $where = []): bool {
+        $value = $this->attributes[$attribute] ?? '';
+        $table = static::$table;
+        $conditions = array_merge([$attribute => $value], $where);
+        
+        $db = Application::$app->getDatabase();
+        $sql = "SELECT COUNT(*) FROM $table WHERE ";
+        $whereClauses = [];
+        $params = [];
+        
+        foreach ($conditions as $key => $val) {
+            $whereClauses[] = "$key = ?";
+            $params[] = $val;
+        }
+        
+        $sql .= implode(' AND ', $whereClauses);
+        $stmt = $db->prepare($sql);
+        $stmt->execute($params);
+        
+        if ($stmt->fetchColumn() > 0) {
+            $fieldName = ucfirst(str_replace('_', ' ', $attribute));
+            $this->addError($attribute, "Ce $fieldName existe déjà");
+            return false;
+        }
         return true;
     }
     
+    public function validate(): bool {
+        return empty($this->errors);
+    }
+
     public function save(): bool {
         if (!$this->validate()) {
             return false;

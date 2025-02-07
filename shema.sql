@@ -10,6 +10,7 @@ CREATE TABLE roles (
     role_name VARCHAR(50) NOT NULL UNIQUE,
     CONSTRAINT chk_role_name CHECK (role_name IN ('Médecin', 'Patient'))
 );
+
 -- Création de la table des utilisateurs
 CREATE TABLE utilisateurs (
     id_utilisateur SERIAL PRIMARY KEY,
@@ -29,6 +30,13 @@ CREATE TABLE infos_medecins (
     adresse_cabinet VARCHAR(255),
     numero_telephone VARCHAR(20) NOT NULL,
     disponibilite JSONB -- Exemple : {"lundi": ["09:00", "17:00"], "mardi": ["09:00", "15:00"]}
+);
+
+-- Création de la table des informations des patients
+CREATE TABLE infos_patients (
+    id_patient SERIAL PRIMARY KEY,
+    id_utilisateur INT UNIQUE REFERENCES utilisateurs(id_utilisateur) ON DELETE CASCADE,
+    numero_secu VARCHAR(20) UNIQUE
 );
 
 -- Création de la table des rendez-vous

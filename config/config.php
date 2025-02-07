@@ -7,7 +7,7 @@ define('DB_PASS', '5876');
 define('DB_PORT', '5432');
 
 // Configuration de l'application
-define('BASE_URL', '/livecodingphpmvc');
+define('BASE_URL', '/SmartCabinet');
 define('ROOT_PATH', dirname(__DIR__));
 
 // Configuration des sessions
