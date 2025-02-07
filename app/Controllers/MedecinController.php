@@ -1,6 +1,10 @@
 <?php
 namespace App\Controllers;
 
+use App\Core\Application;
+use App\Models\Medecin;
+use App\Models\User;
+use App\Models\RendezVous;
 use App\Core\Database;
 
 class MedecinController {
@@ -87,73 +91,43 @@ class MedecinController {
         }
     }
 
-    public function confirmerRendezVous() {
-        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            $id_rdv = $_POST['id_rdv'] ?? '';
-            $id_utilisateur = $_SESSION['user_id'];
-
-            try {
-                // Vérifier que le rendez-vous appartient bien à ce médecin
-                $stmt = $this->db->prepare("
-                    SELECT rdv.id_rdv 
-                    FROM rendez_vous rdv
-                    JOIN infos_medecins im ON rdv.id_medecin = im.id_medecin
-                    WHERE rdv.id_rdv = ? AND im.id_utilisateur = ?
-                ");
-                $stmt->execute([$id_rdv, $id_utilisateur]);
-                
-                if ($stmt->fetch()) {
-                    $stmt = $this->db->prepare("
-                        UPDATE rendez_vous 
-                        SET statut = 'Confirmé'
-                        WHERE id_rdv = ?
-                    ");
-                    $stmt->execute([$id_rdv]);
-                    
-                    header('Content-Type: application/json');
-                    echo json_encode(['success' => true]);
+    public function confirmAppointment($id) {
+        try {
+            $rdv = RendezVous::findOne(['id_rdv' => $id]);
+            
+            if ($rdv && $rdv->id_medecin == $_SESSION['user_id']) {
+                if (RendezVous::confirmerRdv($id)) {
+                    header('Location: ' . Application::$app->getBaseUrl() . '/medecin/dashboard');
+                    exit;
                 } else {
-                    throw new \Exception("Rendez-vous non trouvé");
+                    throw new \Exception("Erreur lors de la confirmation du rendez-vous");
                 }
-            } catch (\Exception $e) {
-                header('Content-Type: application/json');
-                echo json_encode(['error' => $e->getMessage()]);
+            } else {
+                throw new \Exception("Rendez-vous non trouvé ou non autorisé");
             }
+        } catch (\Exception $e) {
+            header('Location: ' . Application::$app->getBaseUrl() . '/medecin/dashboard?error=' . urlencode($e->getMessage()));
+            exit;
         }
     }
 
-    public function annulerRendezVous() {
-        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            $id_rdv = $_POST['id_rdv'] ?? '';
-            $id_utilisateur = $_SESSION['user_id'];
-
-            try {
-                // Vérifier que le rendez-vous appartient bien à ce médecin
-                $stmt = $this->db->prepare("
-                    SELECT rdv.id_rdv 
-                    FROM rendez_vous rdv
-                    JOIN infos_medecins im ON rdv.id_medecin = im.id_medecin
-                    WHERE rdv.id_rdv = ? AND im.id_utilisateur = ?
-                ");
-                $stmt->execute([$id_rdv, $id_utilisateur]);
-                
-                if ($stmt->fetch()) {
-                    $stmt = $this->db->prepare("
-                        UPDATE rendez_vous 
-                        SET statut = 'Annulé'
-                        WHERE id_rdv = ?
-                    ");
-                    $stmt->execute([$id_rdv]);
-                    
-                    header('Content-Type: application/json');
-                    echo json_encode(['success' => true]);
+    public function cancelAppointment($id) {
+        try {
+            $rdv = RendezVous::findOne(['id_rdv' => $id]);
+            
+            if ($rdv && $rdv->id_medecin == $_SESSION['user_id']) {
+                if (RendezVous::annulerRdv($id)) {
+                    header('Location: ' . Application::$app->getBaseUrl() . '/medecin/dashboard');
+                    exit;
                 } else {
-                    throw new \Exception("Rendez-vous non trouvé");
+                    throw new \Exception("Erreur lors de l'annulation du rendez-vous");
                 }
-            } catch (\Exception $e) {
-                header('Content-Type: application/json');
-                echo json_encode(['error' => $e->getMessage()]);
+            } else {
+                throw new \Exception("Rendez-vous non trouvé ou non autorisé");
             }
+        } catch (\Exception $e) {
+            header('Location: ' . Application::$app->getBaseUrl() . '/medecin/dashboard?error=' . urlencode($e->getMessage()));
+            exit;
         }
     }
 
@@ -214,24 +188,61 @@ class MedecinController {
     }
 
     public function profil() {
+        $baseUrl = Application::$app->getBaseUrl();
+        $message = '';
+        $error = '';
+
         try {
-            $id_utilisateur = $_SESSION['user_id'];
-            
-            // Récupérer les informations du médecin
+            // Récupérer les informations de l'utilisateur et du médecin
             $stmt = $this->db->prepare("
                 SELECT u.*, im.*
                 FROM utilisateurs u
                 JOIN infos_medecins im ON u.id_utilisateur = im.id_utilisateur
                 WHERE u.id_utilisateur = ?
             ");
-            $stmt->execute([$id_utilisateur]);
+            $stmt->execute([$_SESSION['user_id']]);
             $medecin = $stmt->fetch();
 
-            require_once __DIR__ . '/../views/medecin/profil.php';
+            if (!$medecin) {
+                throw new \Exception("Utilisateur ou informations médecin non trouvés");
+            }
+
+            if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+                // Mettre à jour les informations de l'utilisateur
+                $stmt = $this->db->prepare("
+                    UPDATE utilisateurs 
+                    SET nom = ?, prenom = ?, email = ?
+                    WHERE id_utilisateur = ?
+                ");
+                $stmt->execute([
+                    $_POST['nom'],
+                    $_POST['prenom'],
+                    $_POST['email'],
+                    $_SESSION['user_id']
+                ]);
+
+                // Mettre à jour les informations du médecin
+                $stmt = $this->db->prepare("
+                    UPDATE infos_medecins 
+                    SET specialite = ?, 
+                        numero_telephone = ?,
+                        adresse_cabinet = ?
+                    WHERE id_utilisateur = ?
+                ");
+                $stmt->execute([
+                    $_POST['specialite'],
+                    $_POST['numero_telephone'],
+                    $_POST['adresse_cabinet'],
+                    $_SESSION['user_id']
+                ]);
+
+                $message = "Profil mis à jour avec succès";
+            }
         } catch (\Exception $e) {
-            header('Location: ' . $_SERVER['BASE_URL'] . '/auth/login');
-            exit;
+            $error = $e->getMessage();
         }
+
+        require_once __DIR__ . '/../views/medecin/profil.php';
     }
 
     public function updateProfil() {

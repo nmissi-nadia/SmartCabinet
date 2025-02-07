@@ -16,7 +16,7 @@ $baseUrl = \App\Core\Application::$app->getBaseUrl();
             background-attachment: fixed;
         }
         .page-container {
-            background-color: rgba(255, 255, 255, 0.9);
+            background-color: rgba(43, 158, 216, 0.9);
             border-radius: 1rem;
             box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
             margin: 2rem auto;
@@ -32,9 +32,9 @@ $baseUrl = \App\Core\Application::$app->getBaseUrl();
         }
     </style>
 </head>
-<body class="h-full">
+<body class="h-full bg-purple-100">
     <div class="min-h-full">
-        <nav class="bg-gradient-to-r from-blue-600 to-blue-800">
+        <nav class="bg-gradient-to-r from-purple-600 to-blue-800">
             <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
                 <div class="flex h-16 items-center justify-between">
                     <div class="flex items-center">

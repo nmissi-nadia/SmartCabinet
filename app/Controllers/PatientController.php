@@ -3,6 +3,7 @@ namespace App\Controllers;
 
 use App\Core\Database;
 use App\Models\Patient;
+use App\Models\User;
 use App\Models\RendezVous;
 use App\Core\Application;
 
@@ -19,27 +20,34 @@ class PatientController {
             exit;
         }
 
-        try {
-            $db = Application::$app->getDatabase();
-            
-            // Récupérer les informations du patient
-            $stmt = $db->prepare("SELECT * FROM utilisateurs WHERE id_utilisateur = ?");
-            $stmt->execute([$_SESSION['user_id']]);
-            $patient = $stmt->fetch();
-
-            if (!$patient) {
-                header('Location: ' . Application::$app->getBaseUrl() . '/auth/login');
-                exit;
-            }
-
-            // Récupérer les rendez-vous du patient
-            $rendezVous = RendezVous::findAllByPatient($_SESSION['user_id']);
-
-            require_once __DIR__ . '/../views/patient/dashboard.php';
-        } catch (\Exception $e) {
-            header('Location: ' . Application::$app->getBaseUrl() . '/auth/login');
+        $baseUrl = Application::$app->getBaseUrl();
+        $db = Application::$app->getDatabase();
+        
+        // Récupérer les informations du patient
+        $user = User::findOne(['id_utilisateur' => $_SESSION['user_id']]);
+        $patient = Patient::findByUserId($_SESSION['user_id']);
+        
+        if (!$user || !$patient) {
+            header('Location: ' . $baseUrl . '/auth/login');
             exit;
         }
+        
+        // Récupérer les rendez-vous du patient
+        $stmt = $db->prepare("
+            SELECT r.*, 
+                   m.nom as medecin_nom, m.prenom,
+                   im.specialite
+            FROM rendez_vous r
+            JOIN utilisateurs m ON r.id_medecin = m.id_utilisateur
+            JOIN infos_medecins im ON m.id_utilisateur = im.id_utilisateur
+            WHERE r.id_patient = ?
+            ORDER BY r.date_rdv DESC
+        ");
+        $stmt->execute([$_SESSION['user_id']]);
+        $stmt->setFetchMode(\PDO::FETCH_CLASS, RendezVous::class);
+        $rendezVous = $stmt->fetchAll();
+
+        require_once __DIR__ . '/../views/patient/dashboard.php';
     }
 
     public function prendreRendezVous() {
@@ -83,40 +91,40 @@ class PatientController {
             exit;
         }
 
-        try {
-            $db = Application::$app->getDatabase();
-            
-            // Récupérer les informations du patient
-            $stmt = $db->prepare("SELECT * FROM patients WHERE id_patient = ?");
-            $stmt->execute([$_SESSION['user_id']]);
-            $patient = $stmt->fetch();
+        $baseUrl = Application::$app->getBaseUrl();
+        $message = '';
+        $error = '';
 
-            if (!$patient) {
-                header('Location: ' . Application::$app->getBaseUrl() . '/auth/login');
-                exit;
+        try {
+            $user = User::findOne(['id_utilisateur' => $_SESSION['user_id']]);
+            $patient = Patient::findByUserId($_SESSION['user_id']);
+            if (!$user || !$patient) {
+                throw new \Exception("Utilisateur ou informations patient non trouvés");
             }
 
             if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-                // Mettre à jour le profil
-                $stmt = $db->prepare("
-                    UPDATE patients 
-                    SET telephone = ?
-                    WHERE id_patient = ?
-                ");
-                $stmt->execute([
-                    $_POST['telephone'],
-                    $_SESSION['user_id']
-                ]);
+                $user->nom = $_POST['nom'] ?? $user->nom;
+                $user->prenom = $_POST['prenom'] ?? $user->prenom;
+                $user->email = $_POST['email'] ?? $user->email;
 
-                header('Location: ' . Application::$app->getBaseUrl() . '/patient/profile');
-                exit;
+                // Mettre à jour les informations du patient
+                $patient->numero_secu = $_POST['numero_secu'] ?? $patient->numero_secu;
+
+                if ($user->validate() && $patient->validate()) {
+                    if ($user->update() && $patient->update()) {
+                        $message = "Profil mis à jour avec succès";
+                    } else {
+                        throw new \Exception("Erreur lors de la mise à jour du profil");
+                    }
+                } else {
+                    $error = "Erreur de validation des données";
+                }
             }
-
-            require_once __DIR__ . '/../views/patient/profile.php';
         } catch (\Exception $e) {
-            header('Location: ' . Application::$app->getBaseUrl() . '/patient/dashboard');
-            exit;
+            $error = $e->getMessage();
         }
+
+        require_once __DIR__ . '/../views/patient/profile.php';
     }
     
     public function appointments() {
@@ -128,6 +136,6 @@ class PatientController {
         $userId = $_SESSION['user_id'];
         $rendezVous = RendezVous::findAllByPatient($userId);
         
-        require_once __DIR__ . '/../views/patient/appointments.php';
+        require_once __DIR__ . '/../views/patient/dashboard.php';
     }
 }

@@ -2,50 +2,85 @@
 namespace App\Core;
 
 class Router {
-    private array $routes = [];
-    
-    /**
-     * Enregistre une route GET
-     */
-    public function get(string $path, array $callback) {
-        $this->routes['GET'][$path] = $callback;
+    protected array $routes = [];
+    protected array $params = [];
+    public Request $request;
+
+    public function __construct() {
+        $this->request = new Request();
     }
-    
-    /**
-     * Enregistre une route POST
-     */
-    public function post(string $path, array $callback) {
-        $this->routes['POST'][$path] = $callback;
+
+    public function get(string $path, string $callback): void {
+        $this->routes['get'][$path] = $callback;
     }
-    
-    /**
-     * Résout la route actuelle
-     */
+
+    public function post(string $path, string $callback): void {
+        $this->routes['post'][$path] = $callback;
+    }
+
+    protected function getCallback(): ?array {
+        $method = $this->request->getMethod();
+        $url = $this->request->getUrl();
+        $url = trim($url, '/');
+
+        // Get all routes for current request method
+        $routes = $this->routes[$method] ?? [];
+
+        foreach ($routes as $route => $callback) {
+            $route = trim($route, '/');
+            
+            // Convert route parameters to regex pattern
+            $routeRegex = "@^" . preg_replace('/\{(\w+)(:[^}]+)?}/', '(?P<\1>[^/]+)', $route) . "$@";
+            
+            if (preg_match($routeRegex, $url, $matches)) {
+                $this->params = array_filter($matches, 'is_string', ARRAY_FILTER_USE_KEY);
+                return $this->parseCallback($callback);
+            }
+        }
+        
+        return null;
+    }
+
+    protected function parseCallback(string $callback): array {
+        // Format: ControllerName@methodName
+        [$controller, $method] = explode('@', $callback);
+        
+        // Add namespace
+        $controller = "App\\Controllers\\$controller";
+        
+        return [$controller, $method];
+    }
+
     public function resolve() {
-        $path = $_SERVER['REQUEST_URI'];
-        $method = $_SERVER['REQUEST_METHOD'];
+        $callback = $this->getCallback();
         
-        // Supprimer les paramètres de requête de l'URL
-        $position = strpos($path, '?');
-        if ($position !== false) {
-            $path = substr($path, 0, $position);
-        }
-        
-        $callback = $this->routes[$method][$path] ?? false;
-        
-        if ($callback === false) {
+        if ($callback === null) {
             http_response_code(404);
-            return $this->renderView('404');
+            require_once Application::$ROOT_DIR . '/views/_404.php';
+            return;
+        }
+
+        [$controller, $method] = $callback;
+        
+        if (!class_exists($controller)) {
+            throw new \Exception("Controller $controller does not exist");
         }
         
-        if (is_array($callback)) {
-            $controller = new $callback[0]();
-            $callback[0] = $controller;
+        $controller = new $controller();
+        
+        if (!method_exists($controller, $method)) {
+            throw new \Exception("Method $method does not exist in controller $controller");
         }
         
-        return call_user_func($callback);
+        // Pass URL parameters to the method if they exist
+        if (!empty($this->params)) {
+            unset($this->params[0]); // Remove full match
+            return call_user_func_array([$controller, $method], array_values($this->params));
+        }
+        
+        return call_user_func([$controller, $method]);
     }
-    
+
     /**
      * Rend une vue avec le layout
      */

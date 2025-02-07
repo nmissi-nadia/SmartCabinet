@@ -4,182 +4,113 @@ namespace App\Models;
 use App\Core\Application;
 
 abstract class Model {
-    protected static string $table;
-    protected array $attributes = [];
+    public const RULE_REQUIRED = 'required';
+    public const RULE_EMAIL = 'email';
+    public const RULE_MIN = 'min';
+    public const RULE_MAX = 'max';
+    public const RULE_MATCH = 'match';
+    public const RULE_UNIQUE = 'unique';
+    public const RULE_IN = 'in';
+
     protected array $errors = [];
-    
-    public function __construct(array $attributes = []) {
-        $this->attributes = $attributes;
-    }
-    
-    public function __get($name) {
-        return $this->attributes[$name] ?? null;
-    }
-    
-    public function __set($name, $value) {
-        $this->attributes[$name] = $value;
-    }
-    
-    public function getErrors() {
-        return $this->errors;
-    }
+    protected static string $table = '';
 
-    public function loadData(array $data): void {
-        foreach ($data as $key => $value) {
-            $this->attributes[$key] = $value;
-        }
-    }
+    abstract public function rules(): array;
 
-    protected function addError(string $attribute, string $message): void {
-        $this->errors[$attribute] = $message;
-    }
-
-    protected function validateRequired(string $attribute, string $label = null): bool {
-        $value = $this->attributes[$attribute] ?? '';
-        if (empty($value)) {
-            $fieldName = $label ?? ucfirst(str_replace('_', ' ', $attribute));
-            $this->addError($attribute, "$fieldName est requis");
-            return false;
-        }
-        return true;
-    }
-
-    protected function validateEmail(string $attribute): bool {
-        $value = $this->attributes[$attribute] ?? '';
-        if (!empty($value) && !filter_var($value, FILTER_VALIDATE_EMAIL)) {
-            $this->addError($attribute, "L'adresse email n'est pas valide");
-            return false;
-        }
-        return true;
-    }
-
-    protected function validateMinLength(string $attribute, int $minLength, string $label = null): bool {
-        $value = $this->attributes[$attribute] ?? '';
-        if (strlen($value) < $minLength) {
-            $fieldName = $label ?? ucfirst(str_replace('_', ' ', $attribute));
-            $this->addError($attribute, "$fieldName doit contenir au moins $minLength caractères");
-            return false;
-        }
-        return true;
-    }
-
-    protected function validateMaxLength(string $attribute, int $maxLength, string $label = null): bool {
-        $value = $this->attributes[$attribute] ?? '';
-        if (strlen($value) > $maxLength) {
-            $fieldName = $label ?? ucfirst(str_replace('_', ' ', $attribute));
-            $this->addError($attribute, "$fieldName ne doit pas dépasser $maxLength caractères");
-            return false;
-        }
-        return true;
-    }
-
-    protected function validateUnique(string $attribute, array $where = []): bool {
-        $value = $this->attributes[$attribute] ?? '';
-        $table = static::$table;
-        $conditions = array_merge([$attribute => $value], $where);
-        
-        $db = Application::$app->getDatabase();
-        $sql = "SELECT COUNT(*) FROM $table WHERE ";
-        $whereClauses = [];
-        $params = [];
-        
-        foreach ($conditions as $key => $val) {
-            $whereClauses[] = "$key = ?";
-            $params[] = $val;
-        }
-        
-        $sql .= implode(' AND ', $whereClauses);
-        $stmt = $db->prepare($sql);
-        $stmt->execute($params);
-        
-        if ($stmt->fetchColumn() > 0) {
-            $fieldName = ucfirst(str_replace('_', ' ', $attribute));
-            $this->addError($attribute, "Ce $fieldName existe déjà");
-            return false;
-        }
-        return true;
-    }
-    
     public function validate(): bool {
+        foreach ($this->rules() as $attribute => $rules) {
+            $value = $this->{$attribute} ?? '';
+            foreach ($rules as $rule) {
+                $ruleName = $rule;
+                if (is_array($rule)) {
+                    $ruleName = $rule[0];
+                }
+
+                if ($ruleName === self::RULE_REQUIRED && !$value) {
+                    $this->addError($attribute, 'Ce champ est requis');
+                }
+
+                if ($ruleName === self::RULE_EMAIL && !filter_var($value, FILTER_VALIDATE_EMAIL)) {
+                    $this->addError($attribute, 'Cet email n\'est pas valide');
+                }
+
+                if ($ruleName === self::RULE_MIN && strlen($value) < $rule['min']) {
+                    $this->addError($attribute, "Ce champ doit contenir au moins {$rule['min']} caractères");
+                }
+
+                if ($ruleName === self::RULE_MAX && strlen($value) > $rule['max']) {
+                    $this->addError($attribute, "Ce champ ne peut pas dépasser {$rule['max']} caractères");
+                }
+
+                if ($ruleName === self::RULE_MATCH && $value !== $this->{$rule['match']}) {
+                    $this->addError($attribute, 'Les champs ne correspondent pas');
+                }
+
+                if ($ruleName === self::RULE_UNIQUE) {
+                    $className = $rule['class'];
+                    $uniqueAttr = $attribute;
+                    $tableName = $className::$table;
+                    
+                    $db = Application::$app->getDatabase();
+                    $statement = $db->prepare("SELECT * FROM $tableName WHERE $uniqueAttr = :attr");
+                    $statement->bindValue(":attr", $value);
+                    $statement->execute();
+                    $record = $statement->fetch();
+                    if ($record) {
+                        $this->addError($attribute, 'Cette valeur existe déjà');
+                    }
+                }
+
+                if ($ruleName === self::RULE_IN && !in_array($value, $rule['options'])) {
+                    $this->addError($attribute, 'Valeur non valide');
+                }
+            }
+        }
+
         return empty($this->errors);
     }
 
-    public function save(): bool {
-        if (!$this->validate()) {
-            return false;
-        }
-        
-        $db = Application::$app->getDatabase();
-        $table = static::$table;
-        $attributes = $this->attributes;
-        
-        if (!isset($attributes['id'])) {
-            // Insert
-            $columns = implode(',', array_keys($attributes));
-            $values = implode(',', array_fill(0, count($attributes), '?'));
-            $sql = "INSERT INTO $table ($columns) VALUES ($values)";
-            
-            $stmt = $db->prepare($sql);
-            return $stmt->execute(array_values($attributes));
-        } else {
-            // Update
-            $id = $attributes['id'];
-            unset($attributes['id']);
-            
-            $set = implode('=?,', array_keys($attributes)) . '=?';
-            $sql = "UPDATE $table SET $set WHERE id=?";
-            
-            $stmt = $db->prepare($sql);
-            return $stmt->execute([...array_values($attributes), $id]);
-        }
+    public function addError(string $attribute, string $message): void {
+        $this->errors[$attribute][] = $message;
     }
-    
-    public static function findOne($conditions): ?static {
-        $db = Application::$app->getDatabase();
-        $table = static::$table;
-        
-        $where = [];
-        $params = [];
-        foreach ($conditions as $key => $value) {
-            $where[] = "$key = ?";
-            $params[] = $value;
-        }
-        
-        $whereStr = implode(' AND ', $where);
-        $sql = "SELECT * FROM $table WHERE $whereStr LIMIT 1";
-        
-        $stmt = $db->prepare($sql);
-        $stmt->execute($params);
-        
-        $result = $stmt->fetch(\PDO::FETCH_ASSOC);
-        if (!$result) {
-            return null;
-        }
-        
-        return new static($result);
+
+    public function hasError(string $attribute): bool {
+        return !empty($this->errors[$attribute]);
     }
-    
-    public static function findAll($conditions = []): array {
-        $db = Application::$app->getDatabase();
-        $table = static::$table;
-        
-        $sql = "SELECT * FROM $table";
-        $params = [];
-        
-        if (!empty($conditions)) {
-            $where = [];
-            foreach ($conditions as $key => $value) {
-                $where[] = "$key = ?";
-                $params[] = $value;
-            }
-            $whereStr = implode(' AND ', $where);
-            $sql .= " WHERE $whereStr";
+
+    public function getFirstError(string $attribute): string {
+        return $this->errors[$attribute][0] ?? '';
+    }
+
+    protected static function prepare(string $sql): \PDOStatement {
+        return Application::$app->getDatabase()->prepare($sql);
+    }
+
+    public static function findAll(array $where = []): array {
+        $tableName = static::$table;
+        $attributes = array_keys($where);
+        $sql = "SELECT * FROM $tableName";
+        if (!empty($where)) {
+            $sql .= " WHERE " . implode(" AND ", array_map(fn($attr) => "$attr = :$attr", $attributes));
         }
         
-        $stmt = $db->prepare($sql);
-        $stmt->execute($params);
-        
-        $results = $stmt->fetchAll(\PDO::FETCH_ASSOC);
-        return array_map(fn($result) => new static($result), $results);
+        $stmt = self::prepare($sql);
+        foreach ($where as $key => $item) {
+            $stmt->bindValue(":$key", $item);
+        }
+        $stmt->execute();
+        return $stmt->fetchAll(\PDO::FETCH_CLASS, static::class);
+    }
+
+    public static function findOne(array $where): ?static {
+        $tableName = static::$table;
+        $attributes = array_keys($where);
+        $sql = implode(" AND ", array_map(fn($attr) => "$attr = :$attr", $attributes));
+        $stmt = self::prepare("SELECT * FROM $tableName WHERE $sql");
+        foreach ($where as $key => $item) {
+            $stmt->bindValue(":$key", $item);
+        }
+        $stmt->execute();
+        return $stmt->fetchObject(static::class);
     }
 }

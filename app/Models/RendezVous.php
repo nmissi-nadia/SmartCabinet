@@ -12,6 +12,9 @@ class RendezVous extends Model {
     public string $date_rdv;
     public string $statut = 'En attente';
     public ?string $commentaire = null;
+    public ?string $medecin_nom = null;
+    public ?string $prenom = null;
+    public ?string $specialite = null;
     
     public function rules(): array {
         return [
@@ -60,7 +63,7 @@ class RendezVous extends Model {
         $db = Application::$app->getDatabase();
         $sql = "
             SELECT rdv.*, 
-                   m.nom as medecin_nom, m.prenom as medecin_prenom,
+                   m.nom as medecin_nom, m.prenom,
                    im.specialite
             FROM rendez_vous rdv
             JOIN infos_medecins im ON rdv.id_medecin = im.id_medecin
@@ -70,15 +73,16 @@ class RendezVous extends Model {
         
         $stmt = $db->prepare($sql);
         $stmt->execute([$patientId]);
+        $stmt->setFetchMode(\PDO::FETCH_CLASS, static::class);
         
-        return $stmt->fetchAll(\PDO::FETCH_CLASS, static::class);
+        return $stmt->fetchAll();
     }
     
     public static function findUpcoming(int $patientId): array {
         $db = Application::$app->getDatabase();
         $sql = "
             SELECT rdv.*, 
-                   m.nom as medecin_nom, m.prenom as medecin_prenom,
+                   m.nom as medecin_nom, m.prenom,
                    im.specialite
             FROM rendez_vous rdv
             JOIN infos_medecins im ON rdv.id_medecin = im.id_medecin
@@ -90,8 +94,9 @@ class RendezVous extends Model {
         
         $stmt = $db->prepare($sql);
         $stmt->execute([$patientId]);
+        $stmt->setFetchMode(\PDO::FETCH_CLASS, static::class);
         
-        return $stmt->fetchAll(\PDO::FETCH_CLASS, static::class);
+        return $stmt->fetchAll();
     }
     
     public static function findByMedecinAndDate(int $medecinId, string $date): array {
@@ -107,8 +112,9 @@ class RendezVous extends Model {
         
         $stmt = $db->prepare($sql);
         $stmt->execute([$medecinId, $date]);
+        $stmt->setFetchMode(\PDO::FETCH_CLASS, static::class);
         
-        return $stmt->fetchAll(\PDO::FETCH_CLASS, static::class);
+        return $stmt->fetchAll();
     }
 
     public static function confirmerRdv(int $id_rdv): bool {
@@ -116,9 +122,9 @@ class RendezVous extends Model {
             $db = Application::$app->getDatabase();
             $sql = "UPDATE rendez_vous SET statut = 'Confirmé' WHERE id_rdv = :id_rdv";
             $stmt = $db->prepare($sql);
-            $stmt->bindValue(':id_rdv', $id_rdv, PDO::PARAM_INT);
+            $stmt->bindValue(':id_rdv', $id_rdv, \PDO::PARAM_INT);
             return $stmt->execute();
-        } catch (PDOException $e) {
+        } catch (\PDOException $e) {
             error_log("Erreur lors de la confirmation du rendez-vous: " . $e->getMessage());
             return false;
         }
@@ -129,9 +135,9 @@ class RendezVous extends Model {
             $db = Application::$app->getDatabase();
             $sql = "UPDATE rendez_vous SET statut = 'Annulé' WHERE id_rdv = :id_rdv";
             $stmt = $db->prepare($sql);
-            $stmt->bindValue(':id_rdv', $id_rdv, PDO::PARAM_INT);
+            $stmt->bindValue(':id_rdv', $id_rdv, \PDO::PARAM_INT);
             return $stmt->execute();
-        } catch (PDOException $e) {
+        } catch (\PDOException $e) {
             error_log("Erreur lors de l'annulation du rendez-vous: " . $e->getMessage());
             return false;
         }

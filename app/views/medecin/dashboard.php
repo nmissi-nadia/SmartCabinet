@@ -1,34 +1,18 @@
-<!DOCTYPE html>
-<html lang="fr">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard Médecin - SmartCabinet</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-</head>
-<body class="bg-gray-100">
+<?php
+$baseUrl = \App\Core\Application::$app->getBaseUrl();
+$title = "Tableau de bord";
+$currentPage = 'dashboard';
+require_once __DIR__ . '/../layouts/header.php';
+?>
     <div class="min-h-screen">
-        <!-- Navigation -->
-        <nav class="bg-white shadow-lg">
-            <div class="max-w-7xl mx-auto px-4">
-                <div class="flex justify-between h-16">
-                    <div class="flex">
-                        <div class="flex-shrink-0 flex items-center">
-                            <h1 class="text-xl font-bold text-gray-800">SmartCabinet</h1>
-                        </div>
-                    </div>
-                    <div class="flex items-center">
-                        <span class="text-gray-700 mr-4">Dr. <?= htmlspecialchars($medecin['prenom'] . ' ' . $medecin['nom']) ?></span>
-                        <a href="/SmartCabinet/auth/logout" class="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded">
-                            Déconnexion
-                        </a>
-                    </div>
-                </div>
-            </div>
-        </nav>
-
         <!-- Contenu principal -->
         <main class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+            <?php if (isset($_GET['error'])): ?>
+                <div class="mb-4 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
+                    <span class="block sm:inline"><?= htmlspecialchars($_GET['error']) ?></span>
+                </div>
+            <?php endif; ?>
+            
             <!-- En-tête du dashboard -->
             <div class="bg-white shadow rounded-lg p-6 mb-6">
                 <h2 class="text-2xl font-bold text-gray-800 mb-4">Informations du cabinet</h2>
@@ -77,8 +61,8 @@
                                         <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
                                             <button class="text-indigo-600 hover:text-indigo-900 mr-3">Voir détails</button>
                                             <?php if ($rdv['statut'] === 'En attente'): ?>
-                                                <button class="text-green-600 hover:text-green-900 mr-3">Confirmer</button>
-                                                <button class="text-red-600 hover:text-red-900">Annuler</button>
+                                                <a href="<?= $baseUrl ?>/medecin/appointment/confirm/<?= $rdv['id_rdv'] ?>" class="text-green-600 hover:text-green-900 mr-3">Confirmer</a>
+                                                <a href="<?= $baseUrl ?>/medecin/appointment/cancel/<?= $rdv['id_rdv'] ?>" class="text-red-600 hover:text-red-900">Annuler</a>
                                             <?php endif; ?>
                                         </td>
                                     </tr>
@@ -142,5 +126,6 @@
             </div>
         </main>
     </div>
-</body>
-</html>
+<?php
+require_once __DIR__ . '/../layouts/footer.php';
+?>

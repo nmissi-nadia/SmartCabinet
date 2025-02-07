@@ -24,6 +24,10 @@ class Patient extends Model {
         return RendezVous::findAll(['id_patient' => $this->id_utilisateur]);
     }
     
+    public static function findByUserId(int $userId): ?static {
+        return static::findOne(['id_utilisateur' => $userId]);
+    }
+    
     public static function create(array $data): bool {
         $db = Application::$app->getDatabase();
         $stmt = $db->prepare("
@@ -49,9 +53,5 @@ class Patient extends Model {
             'numero_secu' => $this->numero_secu,
             'id_utilisateur' => $this->id_utilisateur
         ]);
-    }
-    
-    public static function findByUserId(int $id_utilisateur) {
-        return self::findOne(['id_utilisateur' => $id_utilisateur]);
     }
 }

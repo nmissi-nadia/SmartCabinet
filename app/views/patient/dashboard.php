@@ -22,7 +22,7 @@ require_once __DIR__ . '/../layouts/header.php';
                     Nom complet
                 </dt>
                 <dd class="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
-                    <?= htmlspecialchars($patient['prenom'] . ' ' . $patient['nom']) ?>
+                    <?= htmlspecialchars($user->prenom . ' ' . $user->nom) ?>
                 </dd>
             </div>
             <div class="bg-white px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
@@ -30,7 +30,15 @@ require_once __DIR__ . '/../layouts/header.php';
                     Email
                 </dt>
                 <dd class="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
-                    <?= htmlspecialchars($patient['email']) ?>
+                    <?= htmlspecialchars($user->email) ?>
+                </dd>
+            </div>
+            <div class="bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+                <dt class="text-sm font-medium text-gray-500">
+                    Numéro de sécurité sociale
+                </dt>
+                <dd class="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
+                    <?= htmlspecialchars($patient->numero_secu) ?>
                 </dd>
             </div>
         </dl>
@@ -74,24 +82,24 @@ require_once __DIR__ . '/../layouts/header.php';
                         <div class="flex items-center space-x-4">
                             <div class="flex-1 min-w-0">
                                 <p class="text-sm font-medium text-gray-900">
-                                    Dr. <?= htmlspecialchars($rdv['nom']) ?> <?= htmlspecialchars($rdv['prenom']) ?>
+                                    Dr. <?= htmlspecialchars($rdv->medecin_nom) ?> <?= htmlspecialchars($rdv->prenom) ?>
                                 </p>
                                 <p class="text-sm text-gray-500">
-                                    <?= htmlspecialchars($rdv['specialite']) ?>
+                                    <?= htmlspecialchars($rdv->specialite) ?>
                                 </p>
                                 <p class="text-sm text-gray-900">
-                                    <?= $rdv['date_rdv'] ? date('d/m/Y H:i', strtotime($rdv['date_rdv'])) : 'Date non définie' ?>
+                                    <?= $rdv->date_rdv ? date('d/m/Y H:i', strtotime($rdv->date_rdv)) : 'Date non définie' ?>
                                 </p>
-                                <?php if ($rdv['commentaire']): ?>
+                                <?php if ($rdv->commentaire): ?>
                                     <p class="mt-1 text-sm text-gray-600">
-                                        <?= htmlspecialchars($rdv['commentaire']) ?>
+                                        <?= htmlspecialchars($rdv->commentaire) ?>
                                     </p>
                                 <?php endif; ?>
                             </div>
                             <div class="inline-flex items-center">
                                 <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
                                     <?php
-                                    switch($rdv['statut']) {
+                                    switch($rdv->statut) {
                                         case 'Confirmé':
                                             echo 'bg-green-100 text-green-800';
                                             break;
@@ -105,12 +113,12 @@ require_once __DIR__ . '/../layouts/header.php';
                                             echo 'bg-gray-100 text-gray-800';
                                     }
                                     ?>">
-                                    <?= htmlspecialchars($rdv['statut']) ?>
+                                    <?= htmlspecialchars($rdv->statut) ?>
                                 </span>
                             </div>
-                            <?php if ($rdv['statut'] !== 'Annulé'): ?>
+                            <?php if ($rdv->statut !== 'Annulé'): ?>
                                 <form action="<?= $baseUrl ?>/rendezvous/cancel" method="POST" class="inline">
-                                    <input type="hidden" name="id_rdv" value="<?= $rdv['id_rdv'] ?>">
+                                    <input type="hidden" name="id_rdv" value="<?= $rdv->id_rdv ?>">
                                     <button type="submit" class="text-red-600 hover:text-red-900 text-sm font-medium">
                                         Annuler
                                     </button>
@@ -123,5 +131,4 @@ require_once __DIR__ . '/../layouts/header.php';
         </div>
     <?php endif; ?>
 </div>
-
 <?php require_once __DIR__ . '/../layouts/footer.php'; ?>

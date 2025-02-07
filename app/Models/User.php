@@ -1,63 +1,68 @@
 <?php
 namespace App\Models;
 
+use App\Core\Application;
+
 class User extends Model {
     protected static string $table = 'utilisateurs';
     
-    public function validate(): bool {
-        // Validation des champs requis
-        $this->validateRequired('email', 'Email');
-        $this->validateRequired('mot_de_passe', 'Mot de passe');
-        $this->validateRequired('nom', 'Nom');
-        $this->validateRequired('prenom', 'Prénom');
-        $this->validateRequired('role', 'Rôle');
-
-        // Validation du format email
-        $this->validateEmail('email');
-
-        // Validation de la longueur du mot de passe
-        $this->validateMinLength('mot_de_passe', 6, 'Mot de passe');
-        $this->validateMaxLength('mot_de_passe', 100, 'Mot de passe');
-
-        // Validation des longueurs pour nom et prénom
-        $this->validateMaxLength('nom', 50, 'Nom');
-        $this->validateMaxLength('prenom', 50, 'Prénom');
-
-        // Vérification que l'email est unique
-        $this->validateUnique('email');
-
-        // Validation du rôle
-        $value = $this->attributes['role'] ?? '';
-        if (!in_array($value, ['patient', 'medecin'])) {
-            $this->addError('role', 'Le rôle doit être soit patient soit médecin');
+    public int $id_utilisateur;
+    public string $nom;
+    public string $prenom;
+    public string $email;
+    public string $password;
+    public string $role;
+    
+    public function rules(): array {
+        return [
+            'nom' => [self::RULE_REQUIRED],
+            'prenom' => [self::RULE_REQUIRED],
+            'email' => [self::RULE_REQUIRED, self::RULE_EMAIL, [self::RULE_UNIQUE, 'class' => self::class]],
+            'password' => [self::RULE_REQUIRED, [self::RULE_MIN, 'min' => 8]],
+            'role' => [self::RULE_REQUIRED, [self::RULE_IN, 'options' => ['patient', 'medecin', 'admin']]],
+        ];
+    }
+    
+    public function getFullName(): string {
+        return $this->nom . ' ' . $this->prenom;
+    }
+    
+    public function save(): bool {
+        $this->password = password_hash($this->password, PASSWORD_DEFAULT);
+        return parent::save();
+    }
+    
+    public function update(): bool {
+        $db = Application::$app->getDatabase();
+        $stmt = $db->prepare("
+            UPDATE utilisateurs 
+            SET nom = :nom, 
+                prenom = :prenom, 
+                email = :email
+            WHERE id_utilisateur = :id_utilisateur
+        ");
+        
+        return $stmt->execute([
+            'nom' => $this->nom,
+            'prenom' => $this->prenom,
+            'email' => $this->email,
+            'id_utilisateur' => $this->id_utilisateur
+        ]);
+    }
+    
+    public static function findOne($where): ?static {
+        $tableName = static::$table;
+        $attributes = array_keys($where);
+        $sql = implode("AND ", array_map(fn($attr) => "$attr = :$attr", $attributes));
+        $stmt = self::prepare("SELECT * FROM $tableName WHERE $sql");
+        foreach ($where as $key => $item) {
+            $stmt->bindValue(":$key", $item);
         }
-
-        return empty($this->errors);
-    }
-    
-    public function setPassword(string $password): void {
-        $this->attributes['mot_de_passe'] = password_hash($password, PASSWORD_DEFAULT);
-    }
-    
-    public function verifyPassword(string $password): bool {
-        return password_verify($password, $this->attributes['mot_de_passe']);
+        $stmt->execute();
+        return $stmt->fetchObject(static::class);
     }
     
     public static function findByEmail(string $email): ?static {
         return static::findOne(['email' => $email]);
-    }
-    
-    public function getMedecin(): ?Medecin {
-        if ($this->id_role !== 1) { // 2 = Médecin
-            return null;
-        }
-        return Medecin::findOne(['id_utilisateur' => $this->id_utilisateur]);
-    }
-    
-    public function getRendezVous(): array {
-        if ($this->id_role === 2) { // 3 = Patient
-            return RendezVous::findAll(['id_patient' => $this->id_utilisateur]);
-        }
-        return [];
     }
 }
