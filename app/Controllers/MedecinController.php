@@ -81,7 +81,7 @@ class MedecinController {
                 SELECT COUNT(DISTINCT rdv.id_patient) as total_patients
                 FROM rendez_vous rdv
                 JOIN infos_medecins im ON rdv.id_medecin = im.id_medecin
-                WHERE im.id_utilisateur = ?
+                WHERE rdv.statut = 'Confirmé' AND im.id_utilisateur = ?
             ");
             $stmt->execute([$id_utilisateur]);
             $stats['total_patients'] = $stmt->fetchColumn();
@@ -192,42 +192,76 @@ class MedecinController {
 
     public function confirmAppointment($id) {
         try {
-            $rdv = RendezVous::findOne(['id_rdv' => $id]);
+            // Récupérer le rendez-vous
+            $stmt = $this->db->prepare("
+                SELECT rdv.*, im.id_utilisateur as medecin_user_id
+                FROM rendez_vous rdv
+                JOIN infos_medecins im ON rdv.id_medecin = im.id_medecin
+                WHERE rdv.id_rdv = ?
+            ");
+            $stmt->execute([$id]);
+            $rdv = $stmt->fetch();
             
-            if ($rdv && $rdv->id_medecin == $_SESSION['user_id']) {
-                if (RendezVous::confirmerRdv($id)) {
-                    header('Location: ' . Application::$app->getBaseUrl() . '/medecin/dashboard');
-                    exit;
-                } else {
-                    throw new \Exception("Erreur lors de la confirmation du rendez-vous");
-                }
-            } else {
-                throw new \Exception("Rendez-vous non trouvé ou non autorisé");
+            // Vérifier que le rendez-vous existe et appartient au médecin connecté
+            if (!$rdv || $rdv['medecin_user_id'] != $_SESSION['user_id']) {
+                Application::$app->getSession()->setFlash('error', 'Rendez-vous non trouvé ou non autorisé');
+                header('Location: ' . Application::$app->getBaseUrl() . '/medecin/dashboard');
+                exit;
             }
-        } catch (\Exception $e) {
-            header('Location: ' . Application::$app->getBaseUrl() . '/medecin/dashboard?error=' . urlencode($e->getMessage()));
-            exit;
+
+            // Mettre à jour le statut
+            $stmt = $this->db->prepare("
+                UPDATE rendez_vous 
+                SET statut = 'Confirmé'
+                WHERE id_rdv = ?
+            ");
+            $stmt->execute([$id]);
+
+            Application::$app->getSession()->setFlash('success', 'Rendez-vous confirmé avec succès');
+
+        } catch (\PDOException $e) {
+            Application::$app->getSession()->setFlash('error', 'Une erreur est survenue lors de la confirmation du rendez-vous');
         }
+
+        header('Location: ' . Application::$app->getBaseUrl() . '/medecin/dashboard');
+        exit;
     }
 
     public function cancelAppointment($id) {
         try {
-            $rdv = RendezVous::findOne(['id_rdv' => $id]);
+            // Récupérer le rendez-vous
+            $stmt = $this->db->prepare("
+                SELECT rdv.*, im.id_utilisateur as medecin_user_id
+                FROM rendez_vous rdv
+                JOIN infos_medecins im ON rdv.id_medecin = im.id_medecin
+                WHERE rdv.id_rdv = ?
+            ");
+            $stmt->execute([$id]);
+            $rdv = $stmt->fetch();
             
-            if ($rdv && $rdv->id_medecin == $_SESSION['user_id']) {
-                if (RendezVous::annulerRdv($id)) {
-                    header('Location: ' . Application::$app->getBaseUrl() . '/medecin/dashboard');
-                    exit;
-                } else {
-                    throw new \Exception("Erreur lors de l'annulation du rendez-vous");
-                }
-            } else {
-                throw new \Exception("Rendez-vous non trouvé ou non autorisé");
+            // Vérifier que le rendez-vous existe et appartient au médecin connecté
+            if (!$rdv || $rdv['medecin_user_id'] != $_SESSION['user_id']) {
+                Application::$app->getSession()->setFlash('error', 'Rendez-vous non trouvé ou non autorisé');
+                header('Location: ' . Application::$app->getBaseUrl() . '/medecin/dashboard');
+                exit;
             }
-        } catch (\Exception $e) {
-            header('Location: ' . Application::$app->getBaseUrl() . '/medecin/dashboard?error=' . urlencode($e->getMessage()));
-            exit;
+
+            // Mettre à jour le statut
+            $stmt = $this->db->prepare("
+                UPDATE rendez_vous 
+                SET statut = 'Annulé'
+                WHERE id_rdv = ?
+            ");
+            $stmt->execute([$id]);
+
+            Application::$app->getSession()->setFlash('success', 'Rendez-vous annulé avec succès');
+
+        } catch (\PDOException $e) {
+            Application::$app->getSession()->setFlash('error', 'Une erreur est survenue lors de l\'annulation du rendez-vous');
         }
+
+        header('Location: ' . Application::$app->getBaseUrl() . '/medecin/dashboard');
+        exit;
     }
 
     public function listePatients() {

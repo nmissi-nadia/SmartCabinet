@@ -45,6 +45,7 @@ class Router {
 
         // Si pas de correspondance exacte, chercher les routes avec paramètres
         foreach ($this->routes[$method] as $route => $callback) {
+            // Convertir la route en expression régulière
             $pattern = preg_replace('/\{(\w+)\}/', '([^\/]+)', $route);
             $pattern = "@^" . $pattern . "$@D";
 
